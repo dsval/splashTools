@@ -1,0 +1,14 @@
+Package: splashTools
+Title: Wrapper Function to Download and Preprocess FOrcing and Ancillary data
+Version: 1.0.0
+Authors@R: person("First", "Last", email = "first.last@example.com", role = c("aut", "cre"))
+Description: Wrapper Functions to Download and Preprocess Forcing and Ancillary data
+Depends: R (>= 3.4.1)
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
+Author: David Sandoval <dsandovalhdh@gmail.com> [aut, cre]
+Maintainer: 'David Sandoval' <dsandovalhdh@gmail.com>
+Imports: raster, rgdal, doSNOW, xts, hydroTSM, RNRCS, daymetr, matrixStats, httr, soilDB
+ByteCompile: TRUE
+RoxygenNote: 6.1.1
