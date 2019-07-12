@@ -12,9 +12,11 @@
 #' @export
 #' @examples
 #' splash.grid()
-downscaleSolar<-function(elev_hres,rad_lowres,ouputdir=getwd()){
-	
-	rasterOptions(maxmemory=1e6, timer=TRUE, progress = "text", tmptime = 24, chunksize = 1e6, overwrite=TRUE,tolerance=0.5,todisk=TRUE)
+downscaleSolar<-function(elev_hres,rad_lowres,ouputdir){
+	if (is.null(ouputdir)){
+		ouputdir<-getwd()
+	}
+	rasterOptions(maxmemory=3e7, timer=TRUE, progress = "text", tmptime = 24, chunksize = 3e6, overwrite=TRUE,tolerance=0.5,todisk=TRUE)
 	#compareRaster(elev_hres,rad_lowres,extent=TRUE, rowcol=FALSE, crs=TRUE, res=FALSE, orig=FALSE,
 	#		rotation=FALSE, values=FALSE, stopiffalse=TRUE, showwarning=FALSE)
 	# estimate the window side size
@@ -484,6 +486,6 @@ downscaleSolar<-function(elev_hres,rad_lowres,ouputdir=getwd()){
 	
 	rm(rad_hres)
 	gc()
-	rad_in<-writeRaster(rad_in,paste0(ouputdir,"sw_in",".nc"),format="CDF",overwrite=TRUE,varname="sw_in", varunit="W/m2", longname="daily solar radiation", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(years[1]-1,"-",12,"-",31)))
+	rad_in<-writeRaster(rad_in,paste0(ouputdir,"/","sw_in",".nc"),format="CDF",overwrite=TRUE,varname="sw_in", varunit="W/m2", longname="daily solar radiation", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(years[1]-1,"-",12,"-",31)))
 	return(rad_in)
 }
