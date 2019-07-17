@@ -4,7 +4,7 @@
 \alias{downscaleSolar}
 \title{downscaleSolar}
 \usage{
-downscaleSolar(elev_hres, rad_lowres, ouputdir = getwd())
+downscaleSolar(elev_hres, rad_lowres, ouputdir)
 }
 \arguments{
 \item{elev_hres, rad_lowres, ouputdir}{}

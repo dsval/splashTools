@@ -5,7 +5,7 @@
 \title{subsetForcing}
 \usage{
 subsetForcing(forcing_path, varnam, dem, dem_lowres, yr.start, yr.end,
-  ouputdir = getwd(), downscale = TRUE)
+  ouputdir, downscale = TRUE)
 }
 \arguments{
 \item{forcing_path, varnam, dem, dem_lowres, yr.start, yr.end, ouputdir}{}
