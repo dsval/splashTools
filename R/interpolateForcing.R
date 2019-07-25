@@ -1,11 +1,11 @@
 #' interpolateForcing
 #'
-#' Calculates energy and water fluxes using splash routines, spins up until reaching steady state, then do the caldulations
+#' Wrapper of the hydroTSM::hydrokrige to interpolate over time series in parallel
 #' @param  fields on stations.sp: lat, lon, code
 #' @import doSNOW 
 #' @import raster  
 #' @importFrom xts xts
-#' @importFrom parallel detectCores  
+#' @importFrom parallel detectCores
 #' @importFrom hydroTSM hydrokrige
 #' @keywords splash
 #' @export
@@ -135,15 +135,15 @@ interpolateForcing<-function(stations.sp,data.df,dem,outdir=getwd()){
 		
 	# x.ked<-mapply(FUN=build.lay,xts.dfs,x.ked)
 	gc()
-	clusterEvalQ(cl, library("hydroTSM"))
-	clusterExport(cl, list=c("xts.dfs","x.ked","xgis","dem.sgdf","p4s","build.lay"),envir=environment()) 
-	x.ked<-clusterMap(cl = cl, fun=build.lay,xts.dfs,x.ked)	
+	snow::clusterEvalQ(cl, library("hydroTSM"))
+	snow::clusterExport(cl, list=c("xts.dfs","x.ked","xgis","dem.sgdf","p4s","build.lay"),envir=environment()) 
+	x.ked<-snow::clusterMap(cl = cl, fun=build.lay,xts.dfs,x.ked)	
 	# identify zero values
 	indtemp<-which(sapply(x.ked, FUN=function(X) class(X)=="SpatialGridDataFrame"))
 	# create a spatial template with zero values
 	zerotemp<-x.ked[[indtemp[1]]]
 	zerotemp@data<-zerotemp@data*0
-	# replaze numeric zeros with the spatial zero template
+	# replace numeric zeros with the spatial zero template
 	replacezero<-function(X){
 		if( class(X)!="SpatialGridDataFrame"){
 			X<-zerotemp
@@ -157,12 +157,13 @@ interpolateForcing<-function(stations.sp,data.df,dem,outdir=getwd()){
 	# build the rasters
 	x.ked<-lapply(x.ked,raster)
 	x.ked<-stack(x.ked)
+	x.ked[x.ked<0.0]<-0.0
 	# reproject to wgs and write
 	beginCluster(ncores, type='SOCK')
 	x.ked<-projectRaster(x.ked,crs=wgs,filename=paste0(outdir,"/",y[1],"_",y[length(y)],".","pn",".","nc"),format="CDF",overwrite=TRUE,varname="pn", varunit="mm", longname="Precipitation", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(y[1]-1,"-",12,"-",31)))
 	endCluster()
 	gc()
-	
+	return(x.ked)
 	
 	
 }

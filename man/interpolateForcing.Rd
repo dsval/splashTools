@@ -10,7 +10,7 @@ interpolateForcing(stations.sp, data.df, dem, outdir = getwd())
 \item{fields}{on stations.sp: lat, lon, code}
 }
 \description{
-Calculates energy and water fluxes using splash routines, spins up until reaching steady state, then do the caldulations
+Wrapper of the hydroTSM::hydrokrige to interpolate over time series in parallel
 }
 \examples{
 splash.grid()

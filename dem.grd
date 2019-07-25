@@ -1,0 +1,26 @@
+[general]
+creator=R package 'raster'
+created=2019-07-25 12:29:56
+[georeference]
+nrows=223
+ncols=245
+xmin=309696.302385014
+ymin=8730547.82179875
+xmax=312758.802385014
+ymax=8733335.32179875
+projection=+proj=utm +zone=18 +south +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0
+[data]
+datatype=FLT4S
+byteorder=little
+nbands=1
+bandorder=BIL
+categorical=FALSE
+minvalue=3954.33622221571
+maxvalue=4657.41758144687
+nodatavalue=-3.4e+38
+[legend]
+legendtype=
+values=
+color=
+[description]
+layername=elevation.masl
