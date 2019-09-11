@@ -25,10 +25,10 @@
 #' @examples readFluxdata(filename,elev)
 readFluxdata<-function(filename,elev){
 	# testing
-	# filename<-filenames.fluxnet[22]
+	# filename<-filenames.ameriflux[5,1]
 	# filename.FLX.zip<-filenames.fluxnet[8]
 	# elev<-as.numeric(as.character(FLUXNET_2015@data$elv[22]))
-	# elev<-as.numeric(FLUXNET_mountain@data$Elev[10])
+	# elev<-as.numeric(FLUXNET_mountain@data$Elev[5])
 	
 	# fluxnet_data<-read.table(unz(filename.FLX.zip, filename),  header=T, quote="\"", sep=",",na.strings = -9999)
 	###############################################################################################
@@ -461,7 +461,7 @@ readFluxdata<-function(filename,elev){
 		if(!is.null(fluxnet_data$SWC_1)){
 			sm_1<-fluxnet_data$SWC_1
 		}else{
-			sm_1<-fluxnet_data$P*NA
+			sm_1<-rep(NA,length(ind))
 		}
 	}
 	if(!is.null(fluxnet_data$SWC_F_MDS_2)){
@@ -470,7 +470,7 @@ readFluxdata<-function(filename,elev){
 		if(!is.null(fluxnet_data$SWC_2)){
 			sm_2<-fluxnet_data$SWC_2
 		}else{
-			sm_2<-fluxnet_data$P*NA
+			sm_2<-rep(NA,length(ind))
 		}
 	}
 	if(!is.null(fluxnet_data$SWC_F_MDS_3)){
@@ -479,7 +479,7 @@ readFluxdata<-function(filename,elev){
 		if(!is.null(fluxnet_data$SWC_3)){
 			sm_3<-fluxnet_data$SWC_3
 		}else{
-			sm_3<-fluxnet_data$P*NA
+			sm_3<-rep(NA,length(ind))
 		}
 	}
 	sm<-cbind(sm_1,sm_2,sm_3)

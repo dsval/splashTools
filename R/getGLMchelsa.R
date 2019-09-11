@@ -55,7 +55,7 @@ getGLMchelsa<-function(model,scenario,yr,outdir=getwd()){
 	
 	
 	prec<-writeRaster(dataset_prec,filename=paste0(outdir,'/',prec_filename,'_',yr_info,'.nc'), format="CDF", overwrite=TRUE,varname="prec", varunit="mm",longname='projection precipitation GLM', xname="lon", yname="lat")
-	temp<-writeRaster(dataset_temp,filename=paste0(outdir,'/',temp_filename,'_',yr_info,'.nc'), format="CDF", overwrite=TRUE,varname="temp", varunit="°C/10",longname='projection precipitation GLM', xname="lon", yname="lat")
+	temp<-writeRaster(dataset_temp,filename=paste0(outdir,'/',temp_filename,'_',yr_info,'.nc'), format="CDF", overwrite=TRUE,varname="temp", varunit="C/10",longname='projection precipitation GLM', xname="lon", yname="lat")
 	
 	return(list(prec,temp))
 }
