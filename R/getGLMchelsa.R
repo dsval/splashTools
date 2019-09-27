@@ -39,6 +39,7 @@ getGLMchelsa<-function(model,scenario,yr,outdir=getwd()){
 	# get the datasets
 	options(download.file.extra = c("--no-check-certificate"))
 	download.file(paste0(url_prec,files_prec[1]),files_prec[1],method = "auto",quiet = TRUE,cacheOK = TRUE,mode = "wb")
+	download.file(paste0(url_temp,files_temp[1]),files_temp[1],method = "auto",quiet = TRUE,cacheOK = TRUE,mode = "wb")
 	dataset_prec<-brick(files_prec[1])
 	dataset_temp<-brick(files_temp[1])
 	for(i in 2:length(files_prec)){
@@ -54,8 +55,8 @@ getGLMchelsa<-function(model,scenario,yr,outdir=getwd()){
 	
 	
 	
-	prec<-writeRaster(dataset_prec,filename=paste0(outdir,'/',prec_filename,'_',yr_info,'.nc'), format="CDF", overwrite=TRUE,varname="prec", varunit="mm",longname='projection precipitation GLM', xname="lon", yname="lat")
-	temp<-writeRaster(dataset_temp,filename=paste0(outdir,'/',temp_filename,'_',yr_info,'.nc'), format="CDF", overwrite=TRUE,varname="temp", varunit="C/10",longname='projection precipitation GLM', xname="lon", yname="lat")
+	prec<-writeRaster(dataset_prec,options=c("COMPRESS=DEFLATE", "ZLEVEL=5"),filename=paste0(outdir,'/',prec_filename,'_',yr_info,'.nc'), format="CDF", overwrite=TRUE,varname="prec", varunit="mm",longname='projection precipitation GLM', xname="lon", yname="lat")
+	temp<-writeRaster(dataset_temp,options=c("COMPRESS=DEFLATE", "ZLEVEL=5"),filename=paste0(outdir,'/',temp_filename,'_',yr_info,'.nc'), format="CDF", overwrite=TRUE,varname="temp", varunit="C/10",longname='projection temperature GLM', xname="lon", yname="lat")
 	
 	return(list(prec,temp))
 }

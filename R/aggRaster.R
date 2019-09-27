@@ -8,7 +8,7 @@
 #' @examples
 #' splash.grid()	
 	
-	aggRaster<-function(x,func='mean',inmem=FALSE,varnam='wn',outdir=getwd()){
+aggRaster<-function(x,func='mean',inmem=FALSE,varnam='wn',outdir=getwd()){
 			###############################################################################################
 			# 00. create array for results, fluxes: mm/day, storages (wn, snow): mm
 			###############################################################################################
@@ -57,23 +57,34 @@
 			###############################################################################################
 			if(varnam=='wn'){
 				longname='monthly soil moisture'
+				varunit='mm'
 			}else if(varnam=='ro'){
 				longname='monthly runoff'
+				varunit='mm'
 			}else if(varnam=='pet'){
 				longname='monthly potential evapotranspiration'
+				varunit='mm'
 			}else if(varnam=='aet'){
 				longname='monthly actual evapotranspiration'
+				varunit='mm'
 			}else if(varnam=='snow'){
 				longname='monthly snow water equivalent'
+				varunit='mm'
 			}else if(varnam=='cond'){
 				longname='monthly condensation'
+				varunit='mm'
 			}else if(varnam=='bflow'){
 				longname='monthly baseflow'
+				varunit='mm'
 			}else if(varnam=='sw_in'){
 				longname='monthly solar radiation'
-			}
+				varunit='mm'
+			}else if(varnam=='ppdf'){
+				longname='monthly photon flux density'
+				varunit='mol/m2/month'
+			} 
 			if(!inmem){
-				out<-writeStart(out,filename=paste0(outdir,"/",y[1],"_",y[length(y)],".",varnam,".","nc"),format="CDF",overwrite=TRUE,varname="wn", varunit="mm",
+				out<-writeStart(out,filename=paste0(outdir,"/",y[1],"_",y[length(y)],".",varnam,".","nc"),format="CDF",overwrite=TRUE,varname=varnam, varunit=varunit,
 					longname=longname, xname="lon", yname="lat", zname="time", zunit=paste("months","since",paste0(y[1]-1,"-",12)))
 				
 				
