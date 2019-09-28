@@ -79,7 +79,7 @@ aggRaster<-function(x,func='mean',inmem=FALSE,varnam='wn',outdir=getwd()){
 			}else if(varnam=='sw_in'){
 				longname='monthly solar radiation'
 				varunit='mm'
-			}else if(varnam=='ppdf'){
+			}else if(varnam=='ppfd'){
 				longname='monthly photon flux density'
 				varunit='mol/m2/month'
 			} 
