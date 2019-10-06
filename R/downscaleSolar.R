@@ -4,15 +4,11 @@
 #' @param  elev_hres,rad_lowres,ouputdir
 #' @import doSNOW 
 #' @import raster  
-#' @import xts
-#' @importFrom foreach foreach %dopar%
-#' @importFrom iterators icount
-#' @importFrom snow makeCluster stopCluster
 #' @keywords splash
 #' @export
 #' @examples
 #' splash.grid()
-downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem=FALSE){
+downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem=FALSE, ...){
 	
 	rasterOptions(maxmemory=1e9, timer=TRUE, tmptime = 24, chunksize = 1e8, overwrite=TRUE,tolerance=0.5,todisk=FALSE)
 	###############################################################################################
@@ -635,7 +631,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	###############################################################################################
 	
 	if(!inmem){
-		out<-writeStart(out,filename=paste0(ouputdir,"/",y[1],"_",y[length(y)],"_",'sw_in',".","nc"),format="CDF",overwrite=TRUE,varname="sw_in", varunit="W/m2",longname='shortwave radiation', xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(y[1]-1,"-",12)))
+		out<-writeStart(out,filename=paste0(ouputdir,"/",y[1],"_",y[length(y)],"_",'sw_in',".","nc"),format="CDF",overwrite=TRUE,varname="sw_in", varunit="W/m2",longname='shortwave radiation', xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(y[1]-1,"-",12)), ...)
 		
 		
 	}else {
