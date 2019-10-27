@@ -10,7 +10,7 @@
 #' splash.grid()
 downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem=FALSE, ...){
 	
-	rasterOptions(maxmemory=1e9, timer=TRUE, tmptime = 24, chunksize = 1e8, overwrite=TRUE,tolerance=0.5,todisk=FALSE)
+	# rasterOptions(maxmemory=1e9, timer=TRUE, tmptime = 24, chunksize = 1e8, overwrite=TRUE,tolerance=0.5,todisk=FALSE)
 	###############################################################################################
 	# 00. create array for results, get time info
 	###############################################################################################
@@ -511,7 +511,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	cl <- getCluster()
 	on.exit( returnCluster() )
 	nodes <- length(cl)
-	bs <- blockSize(rad_lowres, minblocks=nodes*4)
+	bs <- blockSize(rad_lowres, minblocks=nodes*10)
 	snow::clusterExport(cl, c('y','calc_sf','doy','bs','rad_lowres','elev_lowres','lat_lr'),envir=environment()) 
 	pb <- pbCreate(bs$n)
 	pb <- txtProgressBar(min=1,max = bs$n, style = 1)
@@ -595,14 +595,18 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	# 09. project low res raster to hd resolution
 	###############################################################################################
 	cat('projecting sf')
-	sf_hres<-projectRaster(sf,elev_hres,filename="sf_hres.grd")
+	#sf_hres<-projectRaster(sf,elev_hres,filename="sf_hres.grd")
+	sf_hres<-crop(sf,elev_hres)
+	fx<-nrow(elev_hres)/nrow(sf_hres)
+	fy<-ncol(elev_hres)/ncol(sf_hres)
+	sf_hres<-disaggregate(sf_res,c(fy,fx),filename="sf_hres.grd",overwrite=TRUE)
 	gc()
 	
 	###############################################################################################
 	# 10. set the clusters for rad parallel computing
 	###############################################################################################	
 		
-	bs <- blockSize(sf_hres, minblocks=nodes)
+	bs <- blockSize(sf_hres, minblocks=nodes*10)
 	snow::clusterExport(cl, c('y','calc_sw_in','doy','bs','sf_hres','elev_hres','lat_hr','terraines'),envir=environment()) 
 	pb <- pbCreate(bs$n)
 	pb <- txtProgressBar(min=1,max = bs$n, style = 1)

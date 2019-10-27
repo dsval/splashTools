@@ -27,7 +27,7 @@ aggRaster<-function(x,func='mean',inmem=FALSE,varnam='wn',outdir=getwd()){
 			cl <- getCluster()
 			on.exit( returnCluster() )
 			nodes <- length(cl)
-			bs <- blockSize(x, minblocks=nodes*5)
+			bs <- blockSize(x, minblocks=nodes*10)
 			parallel::clusterExport(cl, varlist=c('x','func','indmonth','bs'),envir=environment()) 
 			pb <- pbCreate(bs$n)
 			pb <- txtProgressBar(min=1,max = bs$n, style = 1)
