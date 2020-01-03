@@ -9,7 +9,7 @@
 #' splash.grid()
 downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem=FALSE, ...){
 	
-	# rasterOptions(maxmemory=1e9, timer=TRUE, tmptime = 24, chunksize = 1e8, overwrite=TRUE,tolerance=0.5,todisk=FALSE)
+	rasterOptions(maxmemory=1e9, timer=TRUE, tmptime = 24, chunksize = 1e9,progress='text', overwrite=TRUE,tolerance=0.5,todisk=FALSE)
 	###############################################################################################
 	# 00. create array for results, get time info
 	###############################################################################################
@@ -63,6 +63,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	lat_hr<-getlatitude(elev_hres, filename='testlat.grd')
 	gc()
 	# 1.3  calculate slope and aspect
+	rasterOptions(maxmemory=1e9, timer=TRUE, tmptime = 24, chunksize = 1e9,progress='text', overwrite=TRUE,tolerance=0.5,todisk=FALSE)
 	terraines<-terrain(elev_hres, opt=c('slope', 'aspect'), unit='degrees')
 	# 1.3  fillnas slope and aspect
 	fillna<-function(ind,x){
@@ -76,11 +77,11 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 			pad = TRUE, na.rm = FALSE )
 	}
 	
-	n <- seq(nlayers(terraines)) 
-	cat('fixing nas terrain')
-	terraines<-stack(lapply(X=n, FUN=fillna, x=terraines),quick=TRUE)
+	# n <- seq(nlayers(terraines)) 
+	# cat('fixing nas terrain')
+	# terraines<-stack(lapply(X=n, FUN=fillna, x=terraines),quick=TRUE)
 	setwd(ouputdir)
-	
+	rasterOptions(maxmemory=1e8, timer=TRUE, tmptime = 24, chunksize = 1e8, overwrite=TRUE,tolerance=0.5,todisk=FALSE)
 	###########################################################################
 	# 02. Define functions
 	###########################################################################
