@@ -2,7 +2,6 @@
 #'
 #' Dowsncale solar radiation grid data by getting the transmitance from extraterrestrial radiation, and applying slope corrections, returns w/m2
 #' @param  elev_hres,rad_lowres,ouputdir
-#' @import doSNOW 
 #' @import raster  
 #' @keywords splash
 #' @export
@@ -512,7 +511,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	on.exit( returnCluster() )
 	nodes <- length(cl)
 	bs <- blockSize(rad_lowres, minblocks=nodes*10)
-	snow::clusterExport(cl, c('y','calc_sf','doy','bs','rad_lowres','elev_lowres','lat_lr'),envir=environment()) 
+	parallel:::clusterExport(cl, c('y','calc_sf','doy','bs','rad_lowres','elev_lowres','lat_lr'),envir=environment()) 
 	pb <- pbCreate(bs$n)
 	pb <- txtProgressBar(min=1,max = bs$n, style = 1)
 	###############################################################################################
@@ -531,7 +530,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	# 05. send tasks to the nodes
 	###############################################################################################
 	for (i in 1:nodes) {
-		snow::sendCall(cl[[i]], clFun_sf, i, tag=i)
+		parallel:::sendCall(cl[[i]], clFun_sf, i, tag=i)
 	}
 	###############################################################################################
 	# 06. write to the disk on the go, or save to the ram
@@ -550,7 +549,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	###############################################################################################	
 	for (i in 1:bs$n) {
 		
-		d <- snow::recvOneData(cl)
+		d <- parallel:::recvOneData(cl)
 		# error?
 		if (! d$value$success) {
 			stop('error!! check the data...')
@@ -569,7 +568,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 		# need to send more data?
 		ni <- nodes + i
 		if (ni <= bs$n) {
-			snow::sendCall(cl[[d$node]], clFun_sf, ni, tag=ni)
+			parallel:::sendCall(cl[[d$node]], clFun_sf, ni, tag=ni)
 		}
 		setTxtProgressBar(pb,i)
 	}
@@ -599,7 +598,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	sf_hres<-crop(sf,elev_hres)
 	fx<-nrow(elev_hres)/nrow(sf_hres)
 	fy<-ncol(elev_hres)/ncol(sf_hres)
-	sf_hres<-disaggregate(sf_res,c(fy,fx),filename="sf_hres.grd",overwrite=TRUE)
+	sf_hres<-disaggregate(sf_hres,c(fy,fx),filename="sf_hres.grd",overwrite=TRUE)
 	gc()
 	
 	###############################################################################################
@@ -607,7 +606,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	###############################################################################################	
 		
 	bs <- blockSize(sf_hres, minblocks=nodes*10)
-	snow::clusterExport(cl, c('y','calc_sw_in','doy','bs','sf_hres','elev_hres','lat_hr','terraines'),envir=environment()) 
+	parallel:::clusterExport(cl, c('y','calc_sw_in','doy','bs','sf_hres','elev_hres','lat_hr','terraines'),envir=environment()) 
 	pb <- pbCreate(bs$n)
 	pb <- txtProgressBar(min=1,max = bs$n, style = 1)
 	###############################################################################################
@@ -628,7 +627,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	# 12. send tasks to the nodes
 	###############################################################################################
 	for (i in 1:nodes) {
-		snow::sendCall(cl[[i]], clFun_rad, i, tag=i)
+		parallel:::sendCall(cl[[i]], clFun_rad, i, tag=i)
 	}
 	###############################################################################################
 	# 13. write to the disk on the go, or save to the ram
@@ -648,7 +647,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	###############################################################################################	
 	for (i in 1:bs$n) {
 		
-		d <- snow::recvOneData(cl)
+		d <-parallel:::recvOneData(cl)
 		# error?
 		if (! d$value$success) {
 			stop('error!! check the data...')
@@ -667,7 +666,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 		# need to send more data?
 		ni <- nodes + i
 		if (ni <= bs$n) {
-			snow::sendCall(cl[[d$node]], clFun_rad, ni, tag=ni)
+			parallel:::sendCall(cl[[d$node]], clFun_rad, ni, tag=ni)
 		}
 		setTxtProgressBar(pb,i)
 	}
