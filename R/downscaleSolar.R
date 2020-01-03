@@ -13,6 +13,8 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	###############################################################################################
 	# 00. create array for results, get time info
 	###############################################################################################
+	tmpdir<-dirname(rasterTmpFile())
+	setwd(tmpdir)
 	y<-as.numeric(format(getZ(rad_lowres),'%Y'))
 	doy<-as.numeric(format(getZ(rad_lowres),'%j'))
 	ny <-length(doy)
@@ -30,10 +32,36 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	lat.data<-rasterToPoints(elev_lowres)
 	lat_lr[!is.na(lat_lr)]<-lat.data[,2]
 	rm(lat.data)
-	lat_hr<-elev_hres*0
-	lat.data<-rasterToPoints(elev_hres)
-	lat_hr[!is.na(lat_hr)]<-lat.data[,2]
-	rm(lat.data)
+	#### function to get the latitudes from big rasters i.e 1km res global extent
+	getlatitude <- function(x, filename, ...) {
+		##create array for the results
+		out <-raster(x)
+		# get the index of the blocks, every block has n rows, bigger the minblocks, smaller the chunk of rows
+		bs <- blockSize(x, minblocks=200)
+		pb <- pbCreate(bs$n)
+		pb <- txtProgressBar(min=1,max = bs$n, style = 1)
+		# start writing the outputfile
+		out <- writeStart(out, filename, overwrite=TRUE)
+		# rsqv<-function(x,y){summary(lm(y~x,na.action=))$r.squared}
+		for (i in 1:bs$n) {
+			# i=178
+			# xmat <- getValues(x, row=bs$row[i], nrows=bs$nrows[i] )
+			# ymat <- getValues(y, row=bs$row[i], nrows=bs$nrows[i] )
+			xncells<-cellFromRow(x,bs$row[i]:(bs$row[i]+ bs$nrows[i]-1))
+			xmat<-getValues(x,bs$row[i], bs$nrows[i])
+			xydata<-xyFromCell(x, xncells)
+			
+			# write the chunk of results, bs$row[i] is putting the results in the correct rows
+			out <- writeValues(out, xydata[,2], bs$row[i])
+			setTxtProgressBar(pb,i)
+		}
+		out <- writeStop(out)
+		close(pb)
+		return(out)
+	}
+	# 1.2.2 get latitude from the high res dem
+	lat_hr<-getlatitude(elev_hres, filename='testlat.grd')
+	gc()
 	# 1.3  calculate slope and aspect
 	terraines<-terrain(elev_hres, opt=c('slope', 'aspect'), unit='degrees')
 	# 1.3  fillnas slope and aspect
@@ -49,6 +77,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	}
 	
 	n <- seq(nlayers(terraines)) 
+	cat('fixing nas terrain')
 	terraines<-stack(lapply(X=n, FUN=fillna, x=terraines),quick=TRUE)
 	setwd(ouputdir)
 	
@@ -510,6 +539,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	cl <- getCluster()
 	on.exit( returnCluster() )
 	nodes <- length(cl)
+	message('getting sf with ', nodes, ' nodes')
 	bs <- blockSize(rad_lowres, minblocks=nodes*10)
 	parallel:::clusterExport(cl, c('y','calc_sf','doy','bs','rad_lowres','elev_lowres','lat_lr'),envir=environment()) 
 	pb <- pbCreate(bs$n)
@@ -605,7 +635,8 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	# 10. set the clusters for rad parallel computing
 	###############################################################################################	
 		
-	bs <- blockSize(sf_hres, minblocks=nodes*10)
+	bs <- blockSize(sf_hres, minblocks=nodes*100)
+	message('computing sw with ', nodes, ' nodes')
 	parallel:::clusterExport(cl, c('y','calc_sw_in','doy','bs','sf_hres','elev_hres','lat_hr','terraines'),envir=environment()) 
 	pb <- pbCreate(bs$n)
 	pb <- txtProgressBar(min=1,max = bs$n, style = 1)
