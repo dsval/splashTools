@@ -81,7 +81,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	# cat('fixing nas terrain')
 	# terraines<-stack(lapply(X=n, FUN=fillna, x=terraines),quick=TRUE)
 	setwd(ouputdir)
-	rasterOptions(maxmemory=1e8, timer=TRUE, tmptime = 24, chunksize = 1e8, overwrite=TRUE,tolerance=0.5,todisk=FALSE)
+	# rasterOptions(maxmemory=1e8, timer=TRUE, tmptime = 24, chunksize = 1e8, overwrite=TRUE,tolerance=0.5,todisk=FALSE)
 	###########################################################################
 	# 02. Define functions
 	###########################################################################
@@ -627,10 +627,11 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	cat('projecting sf')
 	#sf_hres<-projectRaster(sf,elev_hres,filename="sf_hres.grd")
 	sf_hres<-crop(sf,elev_hres)
-	fx<-nrow(elev_hres)/nrow(sf_hres)
-	fy<-ncol(elev_hres)/ncol(sf_hres)
-	sf_hres<-disaggregate(sf_hres,c(fy,fx),filename="sf_hres.grd",overwrite=TRUE)
-	gc()
+	sf_hres<-projectRaster(sf_hres,elev_hres,filename="sf_hres.grd",overwrite=TRUE)
+	# fx<-nrow(elev_hres)/nrow(sf_hres)
+	# fy<-ncol(elev_hres)/ncol(sf_hres)
+	# sf_hres<-disaggregate(sf_hres,c(fy,fx),filename="sf_hres.grd",overwrite=TRUE)
+	# gc()
 	
 	###############################################################################################
 	# 10. set the clusters for rad parallel computing
