@@ -22,7 +22,7 @@ downscaleRLM<-function(low_res_raster,high_res_raster){
 	#  Ref:     Berger, A. L. (1978), Long term variations of daily insolation
 	#             and quaternary climatic changes, J. Atmos. Sci., 35, 2362-2367.
 	# ************************************************************************
-	rasterOptions(maxmemory=3e7, timer=TRUE, progress = "text", tmptime = 24, chunksize = 1e7, overwrite=TRUE,tolerance=0.5,todisk=TRUE)
+	# rasterOptions(maxmemory=3e7, timer=TRUE, progress = "text", tmptime = 24, chunksize = 1e7, overwrite=TRUE,tolerance=0.5,todisk=TRUE)
 	raster.downscale <- function(x, y, p = NULL, n = NULL, filename = FALSE,scatter = FALSE, ...) {
 		# ************************************************************************
 		# Name:     raster.downscale 
@@ -33,6 +33,8 @@ downscaleRLM<-function(low_res_raster,high_res_raster){
 		# Features: Downscaling corrected function form spatialEco progress bar bug
 		
 		# ************************************************************************	
+		# testing
+		# x=high_res_raster; y=low_res_raster[[1]];scatter=FALSE
 		if(!class(y) == "RasterLayer") stop( "y is not a raster object")
 		if(!class(x) == "RasterLayer" & !class(x) == "RasterStack" & !class(x) == "RasterBrick")
 		stop( "x is not a raster object")  		
@@ -66,8 +68,11 @@ downscaleRLM<-function(low_res_raster,high_res_raster){
 }
 # ************************************************************************
 spatial.downscale<-function(low_res_raster,high_res_raster,filename=NULL){
-	compareRaster(low_res_raster,high_res_raster,extent=TRUE, rowcol=FALSE, crs=TRUE, res=FALSE, orig=TRUE,
-		rotation=TRUE, values=FALSE, tolerance=0.5, stopiffalse=TRUE, showwarning=TRUE)
+	
+	# testing
+	# low_res_raster=lowres;high_res_raster=dem
+	# compareRaster(low_res_raster,high_res_raster,extent=TRUE, rowcol=FALSE, crs=TRUE, res=FALSE, orig=TRUE,
+	# 	rotation=TRUE, values=FALSE, tolerance=0.5, stopiffalse=FALSE, showwarning=TRUE)
 	
 	if (nlayers(high_res_raster)>1){high_res_raster<-high_res_raster[[1]]}
 	if(nlayers(low_res_raster)==1){dowscaled<-raster.downscale(high_res_raster, low_res_raster, scatter=FALSE)
