@@ -14,11 +14,11 @@
 
 getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use.clouds=TRUE),dem,outdir=getwd(),usr='usr',pass='pass'){
 	# testing
-	# library(raster)
-	# library(gdalUtils)
-	# library(rgdal)
-	# library(httr)
-			
+	library(raster)
+	library(gdalUtils)
+	library(rgdal)
+	library(httr)
+	# lat=34.752;lon=78.84;start="2004-04-01";end="2004-04-03";outmode=list(tile=TRUE,monthly=FALSE,use.clouds=FALSE);dem=dem;outdir=getwd();usr='dsandovalhdh';pass='Tomas17102008'		
 	# end testing
 ########################################################################
 #1.get the urls
@@ -299,7 +299,12 @@ readMOD07<-function(filename,output='Ta'){
 	#read datatsets
 	sds <- get_subdatasets(filename)
 	md<-gdalinfo(filename)
-	bbox<-c(md[77],md[18],md[66],md[45])
+	north<-do.call(c,regmatches(md, gregexpr(paste0('.*.','NORTHBOUNDINGCOORDINATE','.*.'),md)))
+	south<-do.call(c,regmatches(md, gregexpr(paste0('.*.','SOUTHBOUNDINGCOORDINATE','.*.'),md)))
+	east<-do.call(c,regmatches(md, gregexpr(paste0('.*.','EASTBOUNDINGCOORDINATE','.*.'),md)))
+	west<-do.call(c,regmatches(md, gregexpr(paste0('.*.','WESTBOUNDINGCOORDINATE','.*.'),md)))
+	bbox<-c(west,east,south,north)
+	# bbox<-c(md[77],md[18],md[66],md[45])
 	bbox<-do.call(rbind,strsplit(bbox,'='))
 	bbox<-as.numeric(bbox[,2])
 	wgs<-"+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
@@ -389,7 +394,12 @@ readMOD06<-function(filename){
 	#read datatsets
 	sds <- get_subdatasets(filename)
 	md<-gdalinfo(filename)
-	bbox<-c(md[86],md[26],md[76],md[55])
+	north<-do.call(c,regmatches(md, gregexpr(paste0('.*.','NORTHBOUNDINGCOORDINATE','.*.'),md)))
+	south<-do.call(c,regmatches(md, gregexpr(paste0('.*.','SOUTHBOUNDINGCOORDINATE','.*.'),md)))
+	east<-do.call(c,regmatches(md, gregexpr(paste0('.*.','EASTBOUNDINGCOORDINATE','.*.'),md)))
+	west<-do.call(c,regmatches(md, gregexpr(paste0('.*.','WESTBOUNDINGCOORDINATE','.*.'),md)))
+	bbox<-c(west,east,south,north)
+	# bbox<-c(md[86],md[26],md[76],md[55])
 	bbox<-do.call(rbind,strsplit(bbox,'='))
 	bbox<-as.numeric(bbox[,2])
 	wgs<-"+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
@@ -445,7 +455,7 @@ read_ssm<-function(filename){
 cat('reading temperature and humidity profiles',"\n")
 atm<-mapply(FUN=readMOD07,filenames_atm,MoreArgs=list(output='Ta'),SIMPLIFY = F)
 ##read atm
-
+# atmtest<-readMOD07(filenames_atm[1],output='Ta')
 ##read clouds
 if (outmode$use.clouds==TRUE){
 	cat('reading cloud info',"\n")
@@ -455,10 +465,11 @@ if (outmode$use.clouds==TRUE){
 }
 
 ##read modis lst
-cat('reading LST',"\n")
+cat('reading modis LST',"\n")
 lst_mod<-mapply(FUN=readlst,filenamlst,SIMPLIFY = F)
 ##read ssm lst
 if(outmode$monthly==FALSE){
+	cat('reading SSM LST',"\n")
 	##read ssm lst
 	lst_ssm<-mapply(FUN=read_ssm,filenames_SSM,SIMPLIFY = F)
 	lst_ssm<-mapply(crop,x=lst_ssm,MoreArgs = list(y=lst_mod[[1]]))
@@ -472,6 +483,7 @@ if(outmode$monthly==FALSE){
 	# get array to do mapply
 	lsmpd<-unlist(mapply(replicate,nds$Freq,lst_mod))
 	# get funct to downs
+	cat('downscaling LST',"\n")
 	dowsn<-function(x,y){downscaleRLM(x,y)$downscale}
 	# gapfill
 	lst_ssm<-mapply(dowsn,as.list(lst_ssm),lsmpd)
@@ -654,6 +666,7 @@ if (outmode$use.clouds==TRUE){
 	# ########################################################################
 	# #3.compute daily averages
 	# ########################################################################
+	cat('reading SSM LST',"\n")
 	ta<-mapply(gapfill,ta)
 	a<-mapply(gapfill,a)
 	Ta<-setZ(stack(ta),as.Date(zdates_atm))
