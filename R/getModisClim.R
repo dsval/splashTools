@@ -3,8 +3,6 @@
 #' download and gapfill MOD06 and MYD06 atmospheric profiles, calculate es sing dowsncaled LST from Microwave and Modis IR
 #' @param   coords vector c(lat,lon)
 #' @param   start, end : data range
-
-#' @importFrom MODISTools MODISSubsets MODISGrid
 #' @import raster
 #' @import gdalUtils
 #' @import rgdal
