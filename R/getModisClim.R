@@ -24,6 +24,7 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 #1.get the urls
 ########################################################################
 	#build the query
+	cat('Retrieving the urls',"\n")
  url<- "http://modwebsrv.modaps.eosdis.nasa.gov/axis2/services/MODAPSservices/"
  if (outmode$use.clouds==TRUE){
 	query_par <- list(products = gsub(" ", "", toString(c('MOD07_L2','MYD07_L2','MOD06_L2','MYD06_L2'))),
@@ -152,7 +153,7 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 	#2.download athmosphere
 	########################################################################
 	
-	cat('downloading atmospheric profile',"\n")
+	cat('downloading atmospheric profiles',"\n")
 	for (i in 1:length(file_urls[,1])) {
 		if(!file.exists(destfiles[i])){
 			# Write file to disk (authenticating with netrc) using the current directory/filename
@@ -185,17 +186,19 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 	if(length(destfileext)>1){pb <- txtProgressBar(min=1,max = length(destfileext), style = 3)}
 	
 	# destfiles<-basename(file_urls[,1])
+	cat(' ',"\n")
 	cat('downloading MODIS LST',"\n")
 	for(i in 1:length(destfileext)){
 		if(!file.exists(destfileext[i])){
 		respon <-httr::GET(as.character(urlext[i]), write_disk(destfileext[i], overwrite = TRUE), 
 			authenticate(usr, pass))
-		while(file.size(destfiles[i])<=200){
-			response <- httr::GET(as.character(file_urls[i,1]), write_disk(destfiles[i], overwrite = TRUE), 
+		while(file.size(destfileext[i])<=200){
+			respon <-httr::GET(as.character(urlext[i]), write_disk(destfileext[i], overwrite = TRUE), 
 				authenticate(usr, pass))
 		}
 		# Check to see if file downloaded correctly
-		if (response$status_code == 200) {
+		if (responr$status_code == 200) {
+			cat(' ',"\n")
 			cat(destfileext[i],"downloaded","\n")
 		} else {
 			cat("error downloading, make sure usr/password are correct","\n")
@@ -208,6 +211,7 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 	########################################################################
 	if(outmode$monthly==FALSE){
 		destfiles_ssm<-basename(SSM_url)
+		cat(' ',"\n")
 		cat('downloading SSM/I, SSMIS LST',"\n")
 		pb <- txtProgressBar(min=1,max = length(destfiles_ssm), style = 3)
 		for(i in 1:length(destfiles_ssm)){
@@ -216,6 +220,7 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 					authenticate(usr, pass))
 				# Check to see if file downloaded correctly
 				if (response$status_code == 200) {
+					cat(' ',"\n")
 					cat(destfiles_ssm[i],"downloaded","\n")
 				} else {
 					cat("error downloading, make sure usr/password are correct","\n")
@@ -452,6 +457,7 @@ read_ssm<-function(filename){
 }
 ############################# reading the data ############################
 ##reading temperature and humidity profiles
+cat(' ',"\n")
 cat('reading temperature and humidity profiles',"\n")
 atm<-mapply(FUN=readMOD07,filenames_atm,MoreArgs=list(output='Ta'),SIMPLIFY = F)
 ##read atm
@@ -465,10 +471,12 @@ if (outmode$use.clouds==TRUE){
 }
 
 ##read modis lst
+cat(' ',"\n")
 cat('reading modis LST',"\n")
 lst_mod<-mapply(FUN=readlst,filenamlst,SIMPLIFY = F)
 ##read ssm lst
 if(outmode$monthly==FALSE){
+	cat(' ',"\n")
 	cat('reading SSM LST',"\n")
 	##read ssm lst
 	lst_ssm<-mapply(FUN=read_ssm,filenames_SSM,SIMPLIFY = F)
