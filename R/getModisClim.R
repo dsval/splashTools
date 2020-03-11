@@ -197,7 +197,7 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 				authenticate(usr, pass))
 		}
 		# Check to see if file downloaded correctly
-		if (responr$status_code == 200) {
+		if (respon$status_code == 200) {
 			cat(' ',"\n")
 			cat(destfileext[i],"downloaded","\n")
 		} else {
