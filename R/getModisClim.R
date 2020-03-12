@@ -674,15 +674,17 @@ if (outmode$use.clouds==TRUE){
 	# ########################################################################
 	# #3.compute daily averages
 	# ########################################################################
-	cat('reading SSM LST',"\n")
+	cat('gapfilling',"\n")
 	ta<-mapply(gapfill,ta)
 	a<-mapply(gapfill,a)
 	Ta<-setZ(stack(ta),as.Date(zdates_atm))
 	Ta<-zApply(x=Ta,by=as.Date(zdates_atm),fun=mean,na.rm=T)
-	Ta<-approxNA(Ta)
+	Ta<-brick(Ta)
+	Ta<-approxNA(Ta,rule=2)
 	a<-setZ(stack(a),as.Date(zdates_atm))
 	a<-zApply(x=a,by=as.Date(zdates_atm),fun=mean,na.rm=T)
-	a<-approxNA(a)
+	a<-brick(a)
+	a<-approxNA(a,rule=2)
 	# ########################################################################
 	# #3.compute ea from mixing ratio
 	# ########################################################################
