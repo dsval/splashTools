@@ -1,24 +1,20 @@
 #' getModisClim
 #'
-#' download and gapfill MOD06 and MYD06 atmospheric profiles, calculate es sing dowsncaled LST from Microwave and Modis IR
+#' download and gapfill MOD07 and MYD07 atmospheric profiles, calculate saturated vapour pressure using dowsncaled LST from Microwave SSMI and Modis IR, if used with the option use.clouds=TRUE, additional files from MOD06 and MYD06 cloud product will be used to infer temperature and actual vapour pressure under the clouds below the tropopause. 
 #' @param   coords vector c(lat,lon)
 #' @param   start, end : data range
 #' @import raster
 #' @import gdalUtils
 #' @import rgdal
 #' @import httr
-#' @keywords splash
+#' @keywords modis
 #' @export
 #' @examples
 #' getModisClim()
 
 getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use.clouds=TRUE),dem,outdir=getwd(),usr='usr',pass='pass'){
 	# testing
-	library(raster)
-	library(gdalUtils)
-	library(rgdal)
-	library(httr)
-	# lat=34.752;lon=78.84;start="2004-04-01";end="2004-04-03";outmode=list(tile=TRUE,monthly=FALSE,use.clouds=FALSE);dem=dem;outdir=getwd();usr='dsandovalhdh';pass='Tomas17102008'		
+	
 	# end testing
 ########################################################################
 #1.get the urls
@@ -370,19 +366,19 @@ readMOD07<-function(filename,output='Ta'){
 		extent(tropohgt)<-extent(bbox)
 		projection(tropohgt)<-wgs
 		# calculate adiabatic lapse rate		
-		fr<-function(x,y) {
-			
-			frvect<-function(x,y){if(length(x[is.na(x)])==length(x)){
-				# cbind(rep(NA,length(x)),rep(NA,length(x)))
-				c(NA,NA)
-			}else{
-				coefs<-lm(y~x)
-				# coefs<-mapply(function(x,y)lm(y~x)$coefficients,split(x, row(x)) ,split(y, row(y)))
-				return(coefs$coefficients)
-			}
-			}
-			coefs<-t(mapply(frvect,split(x, row(x)) ,split(y, row(y))))
-		}
+		# fr<-function(x,y) {
+		# 	
+		# 	frvect<-function(x,y){if(length(x[is.na(x)])==length(x)){
+		# 		# cbind(rep(NA,length(x)),rep(NA,length(x)))
+		# 		c(NA,NA)
+		# 	}else{
+		# 		coefs<-lm(y~x)
+		# 		# coefs<-mapply(function(x,y)lm(y~x)$coefficients,split(x, row(x)) ,split(y, row(y)))
+		# 		return(coefs$coefficients)
+		# 	}
+		# 	}
+		# 	coefs<-t(mapply(frvect,split(x, row(x)) ,split(y, row(y))))
+		# }
 		# regr<-overlay(x=tropohgt,y=ta_press,fun=fr,forcefun=T)
 		return(list(ta_prof=ta_press,tropohgt=tropohgt))
 	}
@@ -466,7 +462,7 @@ atm<-mapply(FUN=readMOD07,filenames_atm,MoreArgs=list(output='Ta'),SIMPLIFY = F)
 if (outmode$use.clouds==TRUE){
 	cat('reading cloud info',"\n")
 	clds<-mapply(FUN=readMOD06,filenames_cld,SIMPLIFY = F)
-	cat('computing adiabatic lapse rate',"\n")
+	# cat('computing adiabatic lapse rate',"\n")
 	T_prof<-mapply(FUN=readMOD07,filenames_atm,MoreArgs=list(output='LR'),SIMPLIFY = F)
 }
 
@@ -554,7 +550,6 @@ if (outmode$use.clouds==TRUE){
 }
 
 
-
 ########################################################################
 #3.gap fill daily adiabatic Lapse rate asuming meain in 3 neigthbour pixels
 ########################################################################
@@ -567,7 +562,7 @@ gapfill<-function(x){
 		}
 	}
 	fillLR<-focal(x,w = matrix(1,3,3), fun = fill.na, pad = TRUE, na.rm = FALSE) 
-	for (i in 1:3){
+	for (i in 1:2){
 		fillLR<-focal(fillLR,w = matrix(1,3,3), fun = fill.na, pad = TRUE, na.rm = FALSE)
 	}
 	return(fillLR)
@@ -577,6 +572,8 @@ gc()
 dem<-projectRaster(dem,lst_mod[[1]])
 
 if (outmode$use.clouds==TRUE){
+	ta<-mapply(gapfill,ta)
+	a<-mapply(gapfill,a)
 	########################################################################
 	#3.average temperature and height geopotential profiles
 	########################################################################
@@ -611,8 +608,10 @@ if (outmode$use.clouds==TRUE){
 	calc_lr<-function(x,y){overlay(x,y,fun=fr,forcefun=T)}
 	
 	LR<-mapply(calc_lr,tropo_temp,ta_prof)
-	
-	alr<-mapply(gapfill,LR)
+	alr<-list()
+	for(i in 1:length(LR)){alr[[i]]<-LR[[i]][[2]]}
+	alr<-mapply(gapfill,alr)
+	alr<-approxNA(stack(alr),rule=2)
 	########################################################################
 	# dem<- raster("C:/Base_de_datos_GIS/global_data/elev_1km/elevation_masked_1KMmd_GMTEDmd.tif")
 	
@@ -659,7 +658,7 @@ if (outmode$use.clouds==TRUE){
 	################################prepare array for each cloud image
 	nimag<-as.data.frame(table(as.character(as.Date(zdates_atm))))
 	
-	alr_list<-unlist(mapply(replicate,nimag$Freq,alr))
+	alr_list<-unlist(mapply(replicate,nimag$Freq,as.list(alr)))
 	tropo_temp_list<-unlist(mapply(replicate,nimag$Freq,tropo_temp))
 	################################ calc air temperature under the clouds at surface level
 	Ta_cld_s<-mapply(calc_Ta_rast,tcld=cl_t,cldBH=cl_b_hgt,cldTH=cl_top_hgt,cld_elev_prof=tropo_temp_list,alr=alr_list,MoreArgs = list(dem=dem))
@@ -670,6 +669,42 @@ if (outmode$use.clouds==TRUE){
 	Ta<-setZ(stack(Ta),as.Date(zdates_atm))
 	Ta<-zApply(x=Ta,by=as.Date(zdates_atm),fun=mean,na.rm=T)
 	Ta<-approxNA(Ta)
+	########################################################################
+	#calc mixing ratio [kg/kg]under the clouds, theoretical at Ta under the clouds
+	# ########################################################################
+	calc_a_clds<-function(lr,t){overlay(lr,t,fun=function(lr,t){
+		tk<-t+273.15
+		a<-(287*tk^2/2501000)*((9.8+lr*1003.5)/(-lr*2501000*0.622-9.8*tk))
+		a<-ifelse(a<0,0,a)
+		a
+	}
+	 )
+	 }
+	 a_clds<-mapply(calc_a_clds,as.list(alr),as.list(Ta))
+	
+	# ########################################################################
+	# #3.compute ea from mixing ratio
+	# ########################################################################
+	calc_ea<-function(a,t,dem){
+		#dry air density[kg/m3]
+		pair<-p_dryair(dem,t)
+		#get vapour density [kg/m3](Oke, 1996)
+		pvap<-a*pair
+		ea<-pvap*461.5*(273.15+t)
+		es<-0.6108*1000*exp((17.27*t)/(t+237.3))
+		ea<-ifelse(ea>es,es,ea)
+		ea
+		
+	}
+	ea<-overlay(stack(a),stack(ta),dem,fun=calc_ea)
+	ea_clds<-overlay(stack(a_clds),Ta,dem,fun=calc_ea)
+	ea<-approxNA(ea,rule=2)
+	ea<-setZ(ea,as.Date(zdates_atm))
+	ea<-zApply(x=ea,by=as.Date(zdates_atm),fun=mean,na.rm=T)
+	ea<-approxNA(ea,rule=2)
+	ea<-mapply(calc_avgTa,as.list(ea),as.list(ea_clds))
+	ea<-stack(ea)
+	########################################################################
 }else{
 	# ########################################################################
 	# #3.compute daily averages
@@ -677,23 +712,26 @@ if (outmode$use.clouds==TRUE){
 	cat('gapfilling',"\n")
 	ta<-mapply(gapfill,ta)
 	a<-mapply(gapfill,a)
-	Ta<-setZ(stack(ta),as.Date(zdates_atm))
+	lst_mod<-mapply(gapfill,lst_mod)
+	Ta<-approxNA(stack(ta),rule=2)
+	Ta<-setZ(Ta,as.Date(zdates_atm))
 	Ta<-zApply(x=Ta,by=as.Date(zdates_atm),fun=mean,na.rm=T)
-	Ta<-brick(Ta)
 	Ta<-approxNA(Ta,rule=2)
-	a<-setZ(stack(a),as.Date(zdates_atm))
+	a<-approxNA(stack(a),rule=2)
+	a<-setZ(a,as.Date(zdates_atm))
 	a<-zApply(x=a,by=as.Date(zdates_atm),fun=mean,na.rm=T)
-	a<-brick(a)
 	a<-approxNA(a,rule=2)
 	# ########################################################################
 	# #3.compute ea from mixing ratio
 	# ########################################################################
 	calc_ea<-function(a,t,dem){
-		#dry air dcensity[kg/m3]
+		#dry air density[kg/m3]
 		pair<-p_dryair(dem,t)
 		#get vapour density [kg/m3](Oke, 1996)
 		pvap<-a*pair
 		ea<-pvap*461.5*(273.15+t)
+		es<-0.6108*1000*exp((17.27*t)/(t+237.3))
+		ea<-ifelse(ea>es,es,ea)
 		ea
 		
 	}
@@ -874,9 +912,9 @@ if(outmode$monthly==TRUE){
 # }
 # vpd<-overlay(Ta,Tsurf,a,fun=calc_vpd,forcefun=T)
 # vpd<-setZ(vpd,getZ(Ta))	
-Ta<-writeRaster(Ta,paste0(outdir,'/','Ta_day_',hv[1],beg,'.',til,'.nc'),format="CDF",overwrite=TRUE,varname="Ta", varunit="C", longname="air temperature", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(as.numeric(format(as.Date(start),'%Y'))-1,"-",12,"-",31)))
-ea<-writeRaster(ea,paste0(outdir,'/','ea_day_',hv[1],beg,'.',til,'.nc'),format="CDF",overwrite=TRUE,varname="ea", varunit="Pa", longname="actual vapor pressure", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(as.numeric(format(as.Date(start),'%Y'))-1,"-",12,"-",31)))
-es<-writeRaster(es,paste0(outdir,'/','es_day_',hv[1],beg,'.',til,'.nc'),format="CDF",overwrite=TRUE,varname="es", varunit="Pa", longname="saturation vapor pressure", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(as.numeric(format(as.Date(start),'%Y'))-1,"-",12,"-",31)))
+Ta<-writeRaster(Ta,paste0(outdir,'/','Ta_day_',hv[1],'.',beg,'.',til,'.nc'),format="CDF",overwrite=TRUE,varname="Ta", varunit="C", longname="air temperature", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(as.numeric(format(as.Date(start),'%Y'))-1,"-",12,"-",31)))
+ea<-writeRaster(ea,paste0(outdir,'/','ea_day_',hv[1],'.',beg,'.',til,'.nc'),format="CDF",overwrite=TRUE,varname="ea", varunit="Pa", longname="actual vapor pressure", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(as.numeric(format(as.Date(start),'%Y'))-1,"-",12,"-",31)))
+es<-writeRaster(es,paste0(outdir,'/','es_day_',hv[1],'.',beg,'.',til,'.nc'),format="CDF",overwrite=TRUE,varname="es", varunit="Pa", longname="saturation vapor pressure", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(as.numeric(format(as.Date(start),'%Y'))-1,"-",12,"-",31)))
 
 
 return(list(Ta=Ta,ea=ea,es=es))									
