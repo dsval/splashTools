@@ -14,7 +14,7 @@
 
 getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use.clouds=TRUE),dem,outdir=getwd(),usr='usr',pass='pass'){
 	# testing
-	
+	on.exit(traceback(0))
 	# end testing
 ########################################################################
 #1.get the urls
