@@ -15,7 +15,7 @@
 getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use.clouds=FALSE),dem,outdir=getwd(),usr='usr',pass='pass'){
 	# testing
 	on.exit(traceback(1))
-	rasterOptions(todisk=TRUE)
+	rasterOptions(todisk=FALSE)
 	# end testing
 ########################################################################
 #1.get the urls
@@ -667,9 +667,9 @@ if (outmode$use.clouds==TRUE){
 	calc_avgTa<-function(x,y){overlay(x,y,fun=function(x,y){rowMeans(cbind(x,y),na.rm = T)})}
 	
 	Ta<-mapply(calc_avgTa,ta,Ta_cld_s)
-	Ta<-setZ(brick(Ta),as.Date(zdates_atm))
+	Ta<-setZ(stack(Ta),as.Date(zdates_atm))
 	Ta<-zApply(x=Ta,by=as.Date(zdates_atm),fun=mean,na.rm=T)
-	Ta<-approxNA(Ta)
+	# Ta<-approxNA(Ta)
 	########################################################################
 	#calc mixing ratio [kg/kg]under the clouds, theoretical at Ta under the clouds
 	# ########################################################################
@@ -697,12 +697,12 @@ if (outmode$use.clouds==TRUE){
 		ea
 		
 	}
-	ea<-overlay(brick(a),brick(ta),dem,fun=calc_ea)
-	ea_clds<-overlay(brick(a_clds),Ta,dem,fun=calc_ea)
-	ea<-approxNA(ea,rule=2)
+	ea<-overlay(stack(a),stack(ta),dem,fun=calc_ea)
+	ea_clds<-overlay(stack(a_clds),Ta,dem,fun=calc_ea)
+	# ea<-approxNA(ea,rule=2)
 	ea<-setZ(ea,as.Date(zdates_atm))
 	ea<-zApply(x=ea,by=as.Date(zdates_atm),fun=mean,na.rm=T)
-	ea<-approxNA(ea,rule=2)
+	# ea<-approxNA(ea,rule=2)
 	ea<-mapply(calc_avgTa,as.list(ea),as.list(ea_clds))
 	ea<-stack(ea)
 	########################################################################
@@ -714,14 +714,14 @@ if (outmode$use.clouds==TRUE){
 	ta<-mapply(gapfill,ta)
 	a<-mapply(gapfill,a)
 	lst_mod<-mapply(gapfill,lst_mod)
-	Ta<-approxNA(brick(ta),rule=2)
-	Ta<-setZ(Ta,as.Date(zdates_atm))
+	# Ta<-approxNA(stack(ta),rule=2)
+	Ta<-setZ(stack(Ta),as.Date(zdates_atm))
 	Ta<-zApply(x=Ta,by=as.Date(zdates_atm),fun=mean,na.rm=T)
-	Ta<-approxNA(Ta,rule=2)
-	a<-approxNA(brick(a),rule=2)
-	a<-setZ(a,as.Date(zdates_atm))
+	# Ta<-approxNA(Ta,rule=2)
+	# a<-approxNA(stack(a),rule=2)
+	a<-setZ(stack(a),as.Date(zdates_atm))
 	a<-zApply(x=a,by=as.Date(zdates_atm),fun=mean,na.rm=T)
-	a<-approxNA(a,rule=2)
+	# a<-approxNA(a,rule=2)
 	# ########################################################################
 	# #3.compute ea from mixing ratio
 	# ########################################################################
