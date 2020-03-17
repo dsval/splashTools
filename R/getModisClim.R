@@ -14,7 +14,7 @@
 
 getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use.clouds=FALSE),dem,outdir=getwd(),usr='usr',pass='pass'){
 	# testing
-	on.exit(traceback(1))
+	on.exit(traceback(0))
 	rasterOptions(todisk=FALSE)
 	# end testing
 ########################################################################
@@ -715,7 +715,7 @@ if (outmode$use.clouds==TRUE){
 	a<-mapply(gapfill,a)
 	lst_mod<-mapply(gapfill,lst_mod)
 	# Ta<-approxNA(stack(ta),rule=2)
-	Ta<-setZ(stack(Ta),as.Date(zdates_atm))
+	Ta<-setZ(stack(ta),as.Date(zdates_atm))
 	Ta<-zApply(x=Ta,by=as.Date(zdates_atm),fun=mean,na.rm=T)
 	# Ta<-approxNA(Ta,rule=2)
 	# a<-approxNA(stack(a),rule=2)
