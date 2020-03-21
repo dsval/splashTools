@@ -14,7 +14,7 @@
 
 getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use.clouds=FALSE),dem,outdir=getwd(),usr='usr',pass='pass'){
 	# testing
-	on.exit(traceback(0))
+	on.exit(traceback(2))
 	rasterOptions(todisk=FALSE)
 	# end testing
 ########################################################################
@@ -60,7 +60,7 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 		fileurl <- do.call(rbind, xml2::as_list(fileurl)[[1]])
 	}
 	
-	file_urls<-mapply(FUN=get_urls,fileIds,SIMPLIFY = F)
+	file_urls<-mapply(FUN=get_urls,fileIds)
 	file_urls<-do.call(c,file_urls)
 	zdates<-do.call(rbind,strsplit(file_urls,'.',fixed=T))
 	zdates<-strptime(paste0(zdates[,6],zdates[,7]),format='A%Y%j%H%M')
@@ -82,7 +82,7 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 	fileIdse <- xml2::read_xml(fileIdse)
 	fileIdse <- do.call(rbind, xml2::as_list(fileIdse)[[1]])
 	# urlext<-get_urls(fileIdse[,1])
-	urlext<-mapply(FUN=get_urls,fileIdse,SIMPLIFY = F)
+	urlext<-mapply(FUN=get_urls,fileIdse)
 	urlext<-do.call(c,urlext)
 	hv<-do.call(rbind,strsplit(urlext,'.',fixed = T))[,7]
 	beg<-format(as.Date(start),'%Y%j')
@@ -106,7 +106,7 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 		paste0(dayurl,url_file_SSM)
 	}
 	if(outmode$monthly==FALSE){
-		SSM_url<-mapply(get_ssmurl,urlsSSM,SIMPLIFY = F)	
+		SSM_url<-mapply(get_ssmurl,urlsSSM,SIMPLIFY = T)	
 	}
 	
 	
