@@ -14,7 +14,7 @@
 
 getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use.clouds=FALSE),dem,outdir=getwd(),usr='usr',pass='pass'){
 	# testing
-	on.exit(traceback(2))
+	# on.exit(traceback(2))
 	rasterOptions(todisk=FALSE)
 	# end testing
 ########################################################################
@@ -240,7 +240,8 @@ if (outmode$use.clouds==TRUE){
 	filenames_myd06<-do.call(c,regmatches(filenames, gregexpr('.*.MYD06.*.',filenames)))
 	filenames_cld<-c(filenames_mod06,filenames_myd06)
 	zdates_cld<-do.call(rbind,strsplit(filenames_cld,'.',fixed=T))
-	zdates_cld<-strptime(paste0(zdates_cld[,2],zdates_cld[,3]),format='A%Y%j%H%M')
+	# zdates_cld<-strptime(paste0(zdates_cld[,2],zdates_cld[,3]),format='A%Y%j%H%M')
+	zdates_cld<-as.POSIXct(paste0(zdates_cld[,length(zdates_cld[1,])-4],zdates_cld[,length(zdates_cld[1,])-3]),format='A%Y%j%H%M', tz = "GMT")
 	filenames_cld<-filenames_cld[order(zdates_cld)]
 }
 
@@ -249,7 +250,8 @@ filenames_mod07<-do.call(c,regmatches(filenames, gregexpr('.*.MOD07.*.',filename
 filenames_myd07<-do.call(c,regmatches(filenames, gregexpr('.*.MYD07.*.',filenames)))
 filenames_atm<-c(filenames_mod07,filenames_myd07)
 zdates_atm<-do.call(rbind,strsplit(filenames_atm,'.',fixed=T))
-zdates_atm<-strptime(paste0(zdates_atm[,2],zdates_atm[,3]),format='A%Y%j%H%M')
+# zdates_atm<-strptime(paste0(zdates_atm[,2],zdates_atm[,3]),format='A%Y%j%H%M')
+zdates_atm<-as.POSIXct(paste0(zdates_atm[,length(zdates_atm[1,])-4],zdates_atm[,length(zdates_atm[1,])-3]),format='A%Y%j%H%M', tz = "GMT")
 filenames_atm<-filenames_atm[order(zdates_atm)]
 filenamlst<-paste0(tmpdir,'/',destfileext)
 
@@ -667,9 +669,10 @@ if (outmode$use.clouds==TRUE){
 	calc_avgTa<-function(x,y){overlay(x,y,fun=function(x,y){rowMeans(cbind(x,y),na.rm = T)})}
 	
 	Ta<-mapply(calc_avgTa,ta,Ta_cld_s,SIMPLIFY = F)
-	Ta<-setZ(stack(Ta),as.Date(zdates_atm))
-	Ta<-zApply(x=Ta,by=as.Date(zdates_atm),fun=mean,na.rm=T)
-	# Ta<-approxNA(Ta)
+	# Ta<-setZ(stack(Ta),as.Date(zdates_atm))
+	# Ta<-zApply(x=Ta,by=as.Date(zdates_atm),fun=mean,na.rm=T)
+	Ta<-approxNA(stack(Ta))
+	Ta<-stackApply(Ta,as.Date(zdates_atm),fun=mean,na.rm=T)
 	########################################################################
 	#calc mixing ratio [kg/kg]under the clouds, theoretical at Ta under the clouds
 	# ########################################################################
@@ -700,7 +703,7 @@ if (outmode$use.clouds==TRUE){
 	ea<-overlay(stack(a),stack(ta),dem,fun=calc_ea)
 	ea_clds<-overlay(stack(a_clds),Ta,dem,fun=calc_ea)
 	# ea<-approxNA(ea,rule=2)
-	ea<-setZ(ea,as.Date(zdates_atm))
+	ea<-setZ(ea,zdates_atm)
 	ea<-zApply(x=ea,by=as.Date(zdates_atm),fun=mean,na.rm=T)
 	# ea<-approxNA(ea,rule=2)
 	ea<-mapply(calc_avgTa,as.list(ea),as.list(ea_clds),SIMPLIFY = F)
@@ -712,15 +715,13 @@ if (outmode$use.clouds==TRUE){
 	# ########################################################################
 	cat('gapfilling',"\n")
 	ta<-mapply(gapfill,ta,SIMPLIFY = F)
-	a<-mapply(gapfill,a)
+	a<-mapply(gapfill,a,SIMPLIFY = F)
 	lst_mod<-mapply(gapfill,lst_mod,SIMPLIFY = F)
-	# Ta<-approxNA(stack(ta),rule=2)
-	Ta<-setZ(stack(ta),as.Date(zdates_atm))
-	Ta<-zApply(x=Ta,by=as.Date(zdates_atm),fun=mean,na.rm=T)
+	Ta<-approxNA(stack(ta),rule=2)
+	Ta<-stackApply(Ta,as.Date(zdates_atm),fun=mean,na.rm=T)
 	# Ta<-approxNA(Ta,rule=2)
-	# a<-approxNA(stack(a),rule=2)
-	a<-setZ(stack(a),as.Date(zdates_atm))
-	a<-zApply(x=a,by=as.Date(zdates_atm),fun=mean,na.rm=T)
+	a<-approxNA(stack(a),rule=2)
+	a<-stackApply(a,as.Date(zdates_atm),fun=mean,na.rm=T)
 	# a<-approxNA(a,rule=2)
 	# ########################################################################
 	# #3.compute ea from mixing ratio
