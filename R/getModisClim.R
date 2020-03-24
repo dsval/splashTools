@@ -718,12 +718,13 @@ if (outmode$use.clouds==TRUE){
 	a<-mapply(gapfill,a,SIMPLIFY = F)
 	lst_mod<-mapply(gapfill,lst_mod,SIMPLIFY = F)
 	Ta<-brick(ta)
-	Ta<-approxNA(Ta,rule=2)
 	Ta<-stackApply(Ta,as.Date(zdates_atm),fun=mean,na.rm=T)
+	Ta<-approxNA(Ta,rule=2)
 	# Ta<-approxNA(Ta,rule=2)
 	a<-brick(a)
-	a<-approxNA(a,rule=2)
+	
 	a<-stackApply(a,as.Date(zdates_atm),fun=mean,na.rm=T)
+	a<-approxNA(a,rule=2)
 	# a<-approxNA(a,rule=2)
 	# ########################################################################
 	# #3.compute ea from mixing ratio
