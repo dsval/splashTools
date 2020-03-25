@@ -15,7 +15,7 @@
 getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use.clouds=FALSE),dem,outdir=getwd(),usr='usr',pass='pass'){
 	# testing
 	# on.exit(traceback(2))
-	rasterOptions(todisk=FALSE)
+	# rasterOptions(todisk=FALSE)
 	# end testing
 ########################################################################
 #1.get the urls
@@ -717,10 +717,13 @@ if (outmode$use.clouds==TRUE){
 	ta<-mapply(gapfill,ta,SIMPLIFY = F)
 	a<-mapply(gapfill,a,SIMPLIFY = F)
 	lst_mod<-mapply(gapfill,lst_mod,SIMPLIFY = F)
+	save(ta,file=paste0(outdir,'/','Ta_day_',hv[1],'.',beg,'.',til,'.RData'))
+	save(zdates_atm,file=paste0(outdir,'/','zdates_atm',hv[1],'.',beg,'.',til,'.RData'))
 	Ta<-brick(ta)
 	Ta<-stackApply(Ta,as.Date(zdates_atm),fun=mean,na.rm=T)
 	# Ta<-approxNA(Ta,rule=2)
 	# Ta<-approxNA(Ta,rule=2)
+
 	a<-brick(a)
 	
 	a<-stackApply(a,as.Date(zdates_atm),fun=mean,na.rm=T)
