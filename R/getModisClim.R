@@ -671,8 +671,8 @@ if (outmode$use.clouds==TRUE){
 	Ta<-mapply(calc_avgTa,ta,Ta_cld_s,SIMPLIFY = F)
 	# Ta<-setZ(stack(Ta),as.Date(zdates_atm))
 	# Ta<-zApply(x=Ta,by=as.Date(zdates_atm),fun=mean,na.rm=T)
-	Ta<-approxNA(stack(Ta))
-	Ta<-stackApply(Ta,as.Date(zdates_atm),fun=mean,na.rm=T)
+	# Ta<-approxNA(stack(Ta))
+	Ta<-stackApply(stack(Ta),as.Date(zdates_atm),fun=mean,na.rm=T)
 	########################################################################
 	#calc mixing ratio [kg/kg]under the clouds, theoretical at Ta under the clouds
 	# ########################################################################
@@ -719,12 +719,12 @@ if (outmode$use.clouds==TRUE){
 	lst_mod<-mapply(gapfill,lst_mod,SIMPLIFY = F)
 	Ta<-brick(ta)
 	Ta<-stackApply(Ta,as.Date(zdates_atm),fun=mean,na.rm=T)
-	Ta<-approxNA(Ta,rule=2)
+	# Ta<-approxNA(Ta,rule=2)
 	# Ta<-approxNA(Ta,rule=2)
 	a<-brick(a)
 	
 	a<-stackApply(a,as.Date(zdates_atm),fun=mean,na.rm=T)
-	a<-approxNA(a,rule=2)
+	# a<-approxNA(a,rule=2)
 	# a<-approxNA(a,rule=2)
 	# ########################################################################
 	# #3.compute ea from mixing ratio
