@@ -669,10 +669,12 @@ if (outmode$use.clouds==TRUE){
 	calc_avgTa<-function(x,y){overlay(x,y,fun=function(x,y){rowMeans(cbind(x,y),na.rm = T)})}
 	
 	Ta<-mapply(calc_avgTa,ta,Ta_cld_s,SIMPLIFY = F)
-	# Ta<-setZ(stack(Ta),as.Date(zdates_atm))
-	# Ta<-zApply(x=Ta,by=as.Date(zdates_atm),fun=mean,na.rm=T)
-	# Ta<-approxNA(stack(Ta))
-	Ta<-stackApply(stack(Ta),as.Date(zdates_atm),fun=mean,na.rm=T)
+	Ta<-brick(Ta)
+	Ta<-approxNA(Ta)
+	Ta<-setZ(Ta,zdates_atm)
+	Ta<-zApply(x=Ta,by=as.Date(zdates_atm),fun=mean,na.rm=T)
+	
+	# Ta<-stackApply(stack(Ta),as.Date(zdates_atm),fun=mean,na.rm=T)
 	########################################################################
 	#calc mixing ratio [kg/kg]under the clouds, theoretical at Ta under the clouds
 	# ########################################################################
@@ -717,16 +719,21 @@ if (outmode$use.clouds==TRUE){
 	ta<-mapply(gapfill,ta,SIMPLIFY = F)
 	a<-mapply(gapfill,a,SIMPLIFY = F)
 	lst_mod<-mapply(gapfill,lst_mod,SIMPLIFY = F)
-	save(ta,file=paste0(outdir,'/','Ta_day_',hv[1],'.',beg,'.',til,'.RData'))
-	save(zdates_atm,file=paste0(outdir,'/','zdates_atm',hv[1],'.',beg,'.',til,'.RData'))
+	# save(ta,file=paste0(outdir,'/','Ta_day_',hv[1],'.',beg,'.',til,'.RData'))
+	# save(zdates_atm,file=paste0(outdir,'/','zdates_atm',hv[1],'.',beg,'.',til,'.RData'))
 	Ta<-brick(ta)
-	Ta<-stackApply(Ta,as.Date(zdates_atm),fun=mean,na.rm=T)
-	# Ta<-approxNA(Ta,rule=2)
-	# Ta<-approxNA(Ta,rule=2)
+	Ta<-approxNA(Ta,rule=2)
+	# Ta<-stackApply(Ta,as.Date(zdates_atm),fun=mean,na.rm=T)
+	Ta<-setZ(Ta,zdates_atm)
+	Ta<-zApply(Ta,as.Date(zdates_atm),fun=mean,na.rm=T)
+	
 
 	a<-brick(a)
-	
-	a<-stackApply(a,as.Date(zdates_atm),fun=mean,na.rm=T)
+	a<-approxNA(a,rule=2)
+	# Ta<-stackApply(Ta,as.Date(zdates_atm),fun=mean,na.rm=T)
+	a<-setZ(a,zdates_atm)
+	a<-zApply(a,as.Date(zdates_atm),fun=mean,na.rm=T)
+	# a<-stackApply(a,as.Date(zdates_atm),fun=mean,na.rm=T)
 	# a<-approxNA(a,rule=2)
 	# a<-approxNA(a,rule=2)
 	# ########################################################################
