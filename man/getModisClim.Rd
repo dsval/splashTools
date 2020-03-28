@@ -5,7 +5,7 @@
 \title{getModisClim}
 \usage{
 getModisClim(lat, lon, start, end, outmode = list(tile = TRUE, monthly =
-  TRUE, use.clouds = TRUE), dem, outdir = getwd(), usr = "usr",
+  TRUE, use.clouds = FALSE), dem, outdir = getwd(), usr = "usr",
   pass = "pass")
 }
 \arguments{
@@ -14,9 +14,9 @@ getModisClim(lat, lon, start, end, outmode = list(tile = TRUE, monthly =
 \item{coords}{vector c(lat,lon)}
 }
 \description{
-download and gapfill MOD06 and MYD06 atmospheric profiles, calculate es sing dowsncaled LST from Microwave and Modis IR
+download and gapfill MOD07 and MYD07 atmospheric profiles, calculate saturated vapour pressure using dowsncaled LST from Microwave SSMI and Modis IR, if used with the option use.clouds=TRUE, additional files from MOD06 and MYD06 cloud product will be used to infer temperature and actual vapour pressure under the clouds below the tropopause.
 }
 \examples{
 getModisClim()
 }
-\keyword{splash}
+\keyword{modis}

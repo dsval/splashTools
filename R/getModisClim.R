@@ -7,6 +7,7 @@
 #' @import gdalUtils
 #' @import rgdal
 #' @import httr
+#' @import xml2
 #' @keywords modis
 #' @export
 #' @examples
@@ -50,14 +51,16 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 	query_out<-httr::GET(url = paste0(url, "searchForFiles"),query = query_par)
 	# get the fileids
 	fileIds <- httr::content(query_out, as = "text")
-	fileIds <- xml2::read_xml(fileIds)
-	fileIds <- do.call(rbind, xml2::as_list(fileIds)[[1]])
+	# fileIds <- xml2::read_xml(fileIds)
+	fileIds<- xml2::read_html(fileIds)
+	fileIds <- do.call(rbind, xml2::as_list(fileIds)[[1]][[1]][[1]])
 	# get the urls
 	get_urls<-function(fileid){
 		files_md<-httr::GET(url = paste0(url,"getFileUrls"),query = list(fileIds=fileid))
 		fileurl <- httr::content(files_md, as = "text")
-		fileurl <- xml2::read_xml(fileurl)
-		fileurl <- do.call(rbind, xml2::as_list(fileurl)[[1]])
+		# fileurl <- xml2::read_xml(fileurl)
+		fileurl <- xml2::read_html(fileurl)
+		fileurl <- do.call(rbind, xml2::as_list(fileurl)[[1]][[1]][[1]])
 	}
 	
 	file_urls<-mapply(FUN=get_urls,fileIds)
@@ -79,8 +82,8 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 	qextent[[4]]<-paste0(format(as.Date(end),'%Y'),'-',format(as.Date(end),'%m'),'-01')
 	query_oute<-httr::GET(url = paste0(url, "searchForFiles"),query = qextent)
 	fileIdse <- httr::content(query_oute, as = "text")
-	fileIdse <- xml2::read_xml(fileIdse)
-	fileIdse <- do.call(rbind, xml2::as_list(fileIdse)[[1]])
+	fileIdse <- xml2::read_html(fileIdse)
+	fileIdse <- do.call(rbind, xml2::as_list(fileIdse)[[1]][[1]][[1]])
 	# urlext<-get_urls(fileIdse[,1])
 	urlext<-mapply(FUN=get_urls,fileIdse)
 	urlext<-do.call(c,urlext)
@@ -757,6 +760,8 @@ if (outmode$use.clouds==TRUE){
 if(outmode$monthly==TRUE){
 	# get es* [pa]
 	es<-calc(stack(lst_mod),fun=function(ts)0.6108*1000*exp((17.27*ts)/(ts+237.3)))
+	monthind<-format(getZ(Ta),'%Y-%m')
+	Ta<-zApply(Ta,monthind,fun=mean,na.rm=T)
 }else{
 	es<-calc(stack(lst_ssm),fun=function(ts)0.6108*1000*exp((17.27*ts)/(ts+237.3)))
 }
