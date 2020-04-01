@@ -66,7 +66,8 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 	file_urls<-mapply(FUN=get_urls,fileIds)
 	file_urls<-do.call(c,file_urls)
 	zdates<-do.call(rbind,strsplit(file_urls,'.',fixed=T))
-	zdates<-strptime(paste0(zdates[,6],zdates[,7]),format='A%Y%j%H%M')
+	# length(zdates[1,])-4
+	zdates<-strptime(paste0(zdates[,length(zdates[1,])-4],zdates[,length(zdates[1,])-3]),format='A%Y%j%H%M')
 	file_urls<-cbind(file_urls,as.character(zdates))
 	file_urls<- file_urls[order(file_urls[,2]),]
 	########################################################################
