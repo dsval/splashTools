@@ -88,7 +88,8 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 	# urlext<-get_urls(fileIdse[,1])
 	urlext<-mapply(FUN=get_urls,fileIdse)
 	urlext<-do.call(c,urlext)
-	hv<-do.call(rbind,strsplit(urlext,'.',fixed = T))[,7]
+	hv<-do.call(rbind,strsplit(urlext,'.',fixed = T))
+	hv<-hv[,length(hv[1,])-3]
 	beg<-format(as.Date(start),'%Y%j')
 	til<-format(as.Date(end),'%Y%j')
 	urlext<-do.call(c,regmatches(urlext, gregexpr(paste0('.*.',hv[1],'.*.'),urlext)))
