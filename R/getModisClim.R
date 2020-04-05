@@ -61,6 +61,7 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 		# fileurl <- xml2::read_xml(fileurl)
 		fileurl <- xml2::read_html(fileurl)
 		fileurl <- do.call(rbind, xml2::as_list(fileurl)[[1]][[1]][[1]])
+		fileurl
 	}
 	
 	file_urls<-mapply(FUN=get_urls,fileIds)
