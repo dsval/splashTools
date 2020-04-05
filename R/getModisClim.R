@@ -13,7 +13,7 @@
 #' @examples
 #' getModisClim()
 
-getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use.clouds=FALSE),dem,outdir=getwd(),usr='usr',pass='pass'){
+getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use.clouds=FALSE),dem,outdir=getwd(), tmpdir=dirname(rasterTmpFile()),usr='usr',pass='pass'){
 	# testing
 	# on.exit(traceback(2))
 	# rasterOptions(todisk=FALSE)
@@ -145,7 +145,7 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 ########################################################################
 #2.download the files
 ########################################################################
-	tmpdir<-dirname(rasterTmpFile())
+	# tmpdir<-dirname(rasterTmpFile())
 	setwd(tmpdir)
 	# setwd('C:/Rcalculations')
 	destfiles<-basename(file_urls[,1])
