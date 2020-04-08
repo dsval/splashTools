@@ -128,9 +128,10 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 		
 	}
 	if(outmode$monthly==FALSE){
-		SSM_url<-mapply(get_ssmurl,urlsSSM,SIMPLIFY = T)	
+		SSM_url<-mapply(get_ssmurl,urlsSSM,SIMPLIFY = T)
+		SSM_url<-SSM_url[!is.na(SSM_url)]	
 	}
-	SSM_url<-SSM_url[!is.na(SSM_url)]
+	
 	
 	########################################################################
 	#set credentials copied from https://git.earthdata.nasa.gov/projects/LPDUR/repos/daac_data_download_r/browse/DAACDataDownload.R
