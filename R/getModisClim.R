@@ -1,14 +1,15 @@
 #' getModisClim
 #'
-#' download and gapfill MOD07 and MYD07 atmospheric profiles, calculate saturated vapour pressure using dowsncaled LST from Microwave SSMI and Modis IR, if used with the option use.clouds=TRUE, additional files from MOD06 and MYD06 cloud product will be used to infer temperature and actual vapour pressure under the clouds below the tropopause. 
-#' @param   coords vector c(lat,lon)
+#' download and gapfill MOD07 and MYD07 atmospheric profiles (air temperature and humidity), calculate saturated vapour pressure using dowsncaled LST from Microwave SSMI and Modis IR, if used with the option use.clouds=TRUE, additional files from MOD06 and MYD06 cloud product will be used to infer temperature and actual vapour pressure under the clouds (only works it the top of the cloud is below the tropopause)
+#' @param   coords: lat,lon
 #' @param   start, end : data range
+#' @param   usr, pass : credentials for NASA EOSDIS/LAADS
 #' @import raster
 #' @import gdalUtils
 #' @import rgdal
 #' @import httr
 #' @import xml2
-#' @keywords modis
+#' @keywords modis, air temperature, vapour pressure
 #' @export
 #' @examples
 #' getModisClim()
@@ -49,11 +50,16 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
  }
 
 	query_out<-httr::GET(url = paste0(url, "searchForFiles"),query = query_par)
+	## NASA API apparently doesn't like too many requests, but it works after few trials
+	while (query_out$status_code != 200){
+		query_out<-httr::GET(url = paste0(url, "searchForFiles"),query = query_par)
+	}
 	# get the fileids
 	fileIds <- httr::content(query_out, as = "text")
 	# fileIds <- xml2::read_xml(fileIds)
 	fileIds<- xml2::read_html(fileIds)
 	fileIds <- do.call(rbind, xml2::as_list(fileIds)[[1]][[1]][[1]])
+	if(fileIds[1,] == 'No results') stop("No records whitin the time range")
 	# get the urls
 	get_urls<-function(fileid){
 		files_md<-httr::GET(url = paste0(url,"getFileUrls"),query = list(fileIds=fileid))
@@ -83,9 +89,13 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 	qextent[[3]]<-paste0(format(as.Date(start),'%Y'),'-',format(as.Date(start),'%m'),'-01')
 	qextent[[4]]<-paste0(format(as.Date(end),'%Y'),'-',format(as.Date(end),'%m'),'-01')
 	query_oute<-httr::GET(url = paste0(url, "searchForFiles"),query = qextent)
+	while(query_out$status_code != 200){
+		query_oute<-httr::GET(url = paste0(url, "searchForFiles"),query = qextent)
+	}
 	fileIdse <- httr::content(query_oute, as = "text")
 	fileIdse <- xml2::read_html(fileIdse)
 	fileIdse <- do.call(rbind, xml2::as_list(fileIdse)[[1]][[1]][[1]])
+	if(fileIdse[1,] == 'No results') stop("No records whitin the time range")
 	# urlext<-get_urls(fileIdse[,1])
 	urlext<-mapply(FUN=get_urls,fileIdse)
 	urlext<-do.call(c,urlext)
@@ -98,23 +108,29 @@ getModisClim<-function(lat,lon,start,end,outmode=list(tile=TRUE,monthly=TRUE,use
 	########################################################################
 	#1.get the urls for lst microwave SSM/I-SSMIS Pathfinder
 	########################################################################
+	# start="2012-01-01";end="2013-12-31";
 	dateseq<-format(seq(as.Date(start),as.Date(end),by='day'),format='%Y.%m.%d')
 	urlsSSM<-paste0('https://n5eil01u.ecs.nsidc.org/PM/NSIDC-0032.002/',as.character(dateseq),'/')
 	
 	get_ssmurl<-function(dayurl){
 		url_file_SSM<-GET(dayurl,authenticate(usr, pass))
-		url_file_SSM <- httr::content(url_file_SSM, as = "parsed")
-		url_file_SSM <-xml2::as_list(url_file_SSM)
-		url_file_SSM<-do.call(rbind,url_file_SSM$html$body[[4]]$table)
-		# get brightness temperature 37gz V polarization Holmes, et al. 2008 doi 10.1029/2008JD010257
-		url_file_SSM<-regmatches(unlist(url_file_SSM[,2]), gregexpr('.*.ML.*.A.*.37V.*.gz$', unlist(url_file_SSM[,2])))
-		url_file_SSM<-do.call(c,url_file_SSM)
-		paste0(dayurl,url_file_SSM)
+		if(url_file_SSM$status_code==404){
+			return(NA)
+		}else{
+			url_file_SSM <- httr::content(url_file_SSM, as = "parsed")
+			url_file_SSM <-xml2::as_list(url_file_SSM)
+			url_file_SSM<-do.call(rbind,url_file_SSM$html$body[[4]]$table)
+			# get brightness temperature 37gz V polarization Holmes, et al. 2008 doi 10.1029/2008JD010257
+			url_file_SSM<-regmatches(unlist(url_file_SSM[,2]), gregexpr('.*.ML.*.A.*.37V.*.gz$', unlist(url_file_SSM[,2])))
+			url_file_SSM<-do.call(c,url_file_SSM)
+			return(paste0(dayurl,url_file_SSM))
+		}
+		
 	}
 	if(outmode$monthly==FALSE){
 		SSM_url<-mapply(get_ssmurl,urlsSSM,SIMPLIFY = T)	
 	}
-	
+	SSM_url<-SSM_url[!is.na(SSM_url)]
 	
 	########################################################################
 	#set credentials copied from https://git.earthdata.nasa.gov/projects/LPDUR/repos/daac_data_download_r/browse/DAACDataDownload.R
@@ -571,9 +587,9 @@ gapfill<-function(x){
 		}
 	}
 	fillLR<-focal(x,w = matrix(1,3,3), fun = fill.na, pad = TRUE, na.rm = FALSE) 
-	for (i in 1:2){
-		fillLR<-focal(fillLR,w = matrix(1,3,3), fun = fill.na, pad = TRUE, na.rm = FALSE)
-	}
+	# for (i in 1:2){
+	# 	fillLR<-focal(fillLR,w = matrix(1,3,3), fun = fill.na, pad = TRUE, na.rm = FALSE)
+	# }
 	return(fillLR)
 }
 
@@ -763,181 +779,26 @@ if (outmode$use.clouds==TRUE){
 if(outmode$monthly==TRUE){
 	# get es* [pa]
 	es<-calc(stack(lst_mod),fun=function(ts)0.6108*1000*exp((17.27*ts)/(ts+237.3)))
+	es<-approxNA(es,rule=2)
 	monthind<-format(getZ(Ta),'%Y-%m')
 	Ta<-zApply(Ta,monthind,fun=mean,na.rm=T)
+	ea<-zApply(ea,monthind,fun=mean,na.rm=T)
+	dateseq_month<-as.Date(format(seq(as.Date(start),as.Date(end),by='month'),format='%Y-%m-%d'))
+	es<-setZ(es,dateseq_month)
+	ea<-setZ(ea,dateseq_month)
+	Ta<-setZ(Ta,dateseq_month)
+		
+	Ta<-writeRaster(Ta,paste0(outdir,'/','Ta_month_',hv[1],'.',beg,'.',til,'.nc'),format="CDF",overwrite=TRUE,varname="Ta", varunit="C", longname="air temperature", xname="lon", yname="lat", zname="time")
+	ea<-writeRaster(ea,paste0(outdir,'/','ea_month_',hv[1],'.',beg,'.',til,'.nc'),format="CDF",overwrite=TRUE,varname="ea", varunit="Pa", longname="actual vapor pressure", xname="lon", yname="lat", zname="time")
+	es<-writeRaster(es,paste0(outdir,'/','es_month_',hv[1],'.',beg,'.',til,'.nc'),format="CDF",overwrite=TRUE,varname="es", varunit="Pa", longname="saturation vapor pressure", xname="lon", yname="lat", zname="time")
 }else{
 	es<-calc(stack(lst_ssm),fun=function(ts)0.6108*1000*exp((17.27*ts)/(ts+237.3)))
+	Ta<-writeRaster(Ta,paste0(outdir,'/','Ta_day_',hv[1],'.',beg,'.',til,'.nc'),format="CDF",overwrite=TRUE,varname="Ta", varunit="C", longname="air temperature", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(as.numeric(format(as.Date(start),'%Y'))-1,"-",12,"-",31)))
+	ea<-writeRaster(ea,paste0(outdir,'/','ea_day_',hv[1],'.',beg,'.',til,'.nc'),format="CDF",overwrite=TRUE,varname="ea", varunit="Pa", longname="actual vapor pressure", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(as.numeric(format(as.Date(start),'%Y'))-1,"-",12,"-",31)))
+	es<-writeRaster(es,paste0(outdir,'/','es_day_',hv[1],'.',beg,'.',til,'.nc'),format="CDF",overwrite=TRUE,varname="es", varunit="Pa", longname="saturation vapor pressure", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(as.numeric(format(as.Date(start),'%Y'))-1,"-",12,"-",31)))
 }
-# 
-# ########################################################################
-# #3.compute mixing ratio under the clouds
-# ########################################################################
-# 
-# 
-# #################calc moist air density clear sky pixels kg/m3 ###################
-# calcpma<-function(ah){calc(ah,fun=function(ah){1.2754*((1+ah)/(1+1.609*ah))})}
-# pma<-mapply(calcpma,a)
-# #################calc water vapour pressure kg/m3 ###################
-# calc_ea<-function(a,pma,cld_a,ta,ta_cl_s,dem){
-# 	# temperature in kelvin
-# 	TclK<-ta_cl_s+273.15
-# 	# calc ea where cloud inmmersion happens assuming air is saturated
-# 	ea_cl<-0.6108*1000*exp((17.27*ta_cl_s)/(ta_cl_s+237.3))
-# 	#calc ea under the cloud, using vapour density Oke, 1996
-# 	# ea_cl<-cld_a*TclK*461.5
-# 	
-# 	# get air density at the top of the cloud kg/m3
-# 	# pda<-((101325*0.0289654)/(8.3144*(TclK)))*(1-((0.0065*dem)/288.15))^(((9.8*0.0289654)/(8.3141*0.0065))-1)
-# 	# # density of moist air in cloudy pixels kg/m3
-# 	# pma_cl<-pda+(cld_a/1000)
-# 	# # water vapor pressure  at surface under cloudy pixels [Pa]
-# 	# ea_cl<-(pma_cl*8.314*TclK)/(18.015/1000)
-# 	# water vapor pressure  at surface clear pixels [Pa]
-# 	eair<-(a*1000)*(1/18.015)*pma*8.314*(ta+273.15)
-# 	# water vapor pressure
-# 	ea<-rowMeans(cbind(eair,ea_cl),na.rm = T)
-# 	return(ea)
-# }
-# calc_ea_rast<-function(a,pma,cld_a,ta,ta_cl_s,dem){overlay(a,pma,cld_a,ta,ta_cl_s,dem,fun=calc_ea)}
-# ea<-mapply(FUN=calc_ea_rast,a=a,pma=pma,cld_a=cl_a,ta=ta,ta_cl_s=Ta_cld_s,MoreArgs = list(dem=dem))
-# 
-# calc_avgTa<-function(x,y){overlay(x,y,fun=function(x,y){rowMeans(cbind(x,y),na.rm = T)})}
-# 
-# Ta<-mapply(calc_avgTa,ta,Ta_cld_s)
-# ########################################################################
-# #3.interpolate using gwr
-# ########################################################################
-# Ta<-setZ(stack(Ta),as.Date(zdates_atm))
-# Ta<-zApply(x=Ta,by=as.Date(zdates_atm),fun=mean,na.rm=T)
-# 
-# ea<-setZ(stack(ea),as.Date(unique(file_urls[,2])))
-# ea<-zApply(x=ea,by=as.Date(unique(file_urls[,2])),fun=mean,na.rm=T)
 
-# testsgwrd<-stack(Ta[[1]],dem)
-# testsgwrd<-rasterToPoints(testsgwrd, spatial=T)
-# names(testsgwrd)<-c('ta','elev')
-# testsgwrd<-subset(testsgwrd,!is.na(testsgwrd$ta) & !is.na(testsgwrd$elev))
-# dist.v1<-gw.dist(dp.locat=testsgwrd@coords, p=2, theta=0, longlat=FALSE)
-# bands<-bw.gwr(ta~elev,data=testsgwrd,p=2, theta=0, longlat=FALSE,dMat =dist.v1)
-# 
-# # testtcl<-overlay(cl_t[[2]],cl_a[[2]],dem,cl_top_hgt[[2]],fun=calc_Ta)
-# 
-# 
-# tile<-do.call(rbind,strsplit(urlext[1],'.',fixed = T))[,7]
-# beg<-format(as.Date(start),'%Y%j')
-# til<-format(as.Date(end),'%Y%j')
-# 
-# 
-# 
-# ta<-setZ(ta,as.Date(unique(file_urls[,2])))
-# ta<-zApply(x=ta,by=as.Date(unique(file_urls[,2])),fun=mean,na.rm=T)
-# windows()
-# plot(ta[[1]])
-# 
-# 
-# 
-# plot(crop(dem,ta))
-# 	
-# 			
-# calc_tavg<-function(daylist,timeoverpass){
-# 	
-# }
-# 
-# 
-# lst_ssmtest<-projectRaster(lst_ssm[[1]],lst_mod[[1]])
-# 
-# 
-# 
-# extent(lst_ssmtest)<-extent(lst_ssm[[1]])
-# 
-# lstdown<-downscaleRLM(lst_ssmtest,lst_mod[[1]])
-# 
-# dem<- raster("C:/Base_de_datos_GIS/global_data/elev_1km/elevation_masked_1KMmd_GMTEDmd.tif")
-# gc()
-# 
-# dem<-projectRaster(crop(dem,lst_mod[[1]]),lst_mod[[1]])
-# 
-# # downscale krigging
-# 
-# lst_ssmtest<-crop(stack(lst_ssm),lst_mod[[1]])
-# 
-# lst_ssm_sp<-rasterToPoints(lst_ssmtest,spatial=T)
-# lst_ssm_sp$code<-paste0('cod_',1:length(lst_ssm_sp[,1]))
-# lst_ts<-xts(t(as.matrix(lst_ssm_sp@data[,1:2])),seq(as.Date(start),as.Date(end),by='day'))
-# 
-# tpn<-interpolateForcing(lst_ssm_sp,lst_ts,lst_mod[[1]],tmpdir)
-# 
-# 
-# hmt_stat<-readOGR(dsn="C:/Water_Data/iMHEA/iMHEA_geodata/HMT", layer= "stations",pointDropZ=TRUE)
-# hmt_stat$code<-hmt_stat@data$Código_iM
-# save(prececu2012,file = "C:/Water_Data/iMHEA/iMHEA_geodata/HMT/prec_HMT_2015_2016.RData")
-# load(file="C:/Water_Data/iMHEA/iMHEA_geodata/HMT/prec_HMT_2015_2016.RData")
-# tpn<-interpolateForcing(hmt_stat,prececu2012,dem,"C:/Water_Data/iMHEA/iMHEA_geodata/HMT")
-# 
-# 
-# 
-# 
-# # get surface temperature C
-# Tsurf_mod11<-mapply(FUN=readlst,filenamlst)						
-# Tsurf<-mapply(FUN=readMOD07,filenames,MoreArgs=list(output='Tsurf'))
-# # get air temperature at surface C
-# Ta<-mapply(FUN=readMOD07,filenames,MoreArgs=list(output='Ta'))
-# 
-# # get absolute humidity at surface kg/kg
-# a<-mapply(FUN=readMOD07,filenames,MoreArgs=list(output='a'))
-# gc()
-# # fix formats and extent
-# tiddyup<-function(rastrlist,mold){
-# 	result<-mapply(FUN=extend,rastrlist,MoreArgs=list(y=mold))
-# 	result<-mapply(FUN=crop,result,MoreArgs=list(y=mold))
-# 	result<-mapply(FUN=projectRaster,result,MoreArgs=list(to=mold))
-# 	# stack(result)
-# 	result
-# }
-# Tsurf<-tiddyup(Tsurf,Tsurf_mod11[[1]])
-# Ta<-tiddyup(Ta,Tsurf_mod11[[1]])
-# a<-tiddyup(a,Tsurf_mod11[[1]])
-# ########################################################################
-# #4. gap filling
-# ########################################################################	
-# ind.complete<-file_urls[,2]
 
-# Ta<-mapply(FUN=focal,Ta,MoreArgs = list(w = matrix(1,3,3), fun = fill.na, pad = TRUE, na.rm = FALSE),SIMPLIFY = F)
-# Tsurf<-mapply(FUN=focal,Tsurf,MoreArgs = list(w = matrix(1,3,3), fun = fill.na, pad = TRUE, na.rm = FALSE),SIMPLIFY = F)
-# a<-mapply(FUN=focal,a,MoreArgs = list(w = matrix(1,3,3), fun = fill.na, pad = TRUE, na.rm = FALSE),SIMPLIFY = F)
-# gc()
-# ########################################################################
-# #6.get daily averages
-# ########################################################################
-# 
-# Tsurf<-setZ(stack(Tsurf),as.Date(file_urls[,2]))
-# Tsurf<-zApply(x=Tsurf,by=as.Date(file_urls[,2]),fun=mean,na.rm=T)
-# avg<-function(x,y){
-# 	ifelse(is.na(x),ifelse(is.na(y),NA,y),ifelse(is.na(y),x,(x+y)/2))
-# }
-# Tsurf<-overlay(Tsurf,stack(Tsurf_mod11),fun=avg)
-# Ta<-setZ(stack(Ta),as.Date(file_urls[,2]))
-# Ta<-zApply(x=Ta,by=as.Date(file_urls[,2]),fun=mean,na.rm=T)
-# a<-setZ(stack(a),as.Date(file_urls[,2]))
-# a<-zApply(x=a,by=as.Date(file_urls[,2]),fun=mean,na.rm=T)
-# # calculate vpd surface - air
-# calc_vpd<-function(t,ts,a){
-# 	# get es* [pa]
-# 	es<-0.6108*1000*exp((17.27*ts)/(ts+237.3))
-# 	# density moist air [kg/m3] https://www.engineeringtoolbox.com/density-air-d_680.html
-# 	pma<-1.2754*((1+a)/(1+1.609*a))
-# 	# water vapor pressure [Pa]
-# 	ea<-(a*1000)*(1/18.015)*pma*8.314*(t+273.15)
-# 	# vdp<-ifelse(ea>es,0.0,es-ea)
-# 	vpd<-es-ea
-# 	vpd<-ifelse(vpd<0,0.0,vpd)
-# 	return(vpd)
-# }
-# vpd<-overlay(Ta,Tsurf,a,fun=calc_vpd,forcefun=T)
-# vpd<-setZ(vpd,getZ(Ta))	
-Ta<-writeRaster(Ta,paste0(outdir,'/','Ta_day_',hv[1],'.',beg,'.',til,'.nc'),format="CDF",overwrite=TRUE,varname="Ta", varunit="C", longname="air temperature", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(as.numeric(format(as.Date(start),'%Y'))-1,"-",12,"-",31)))
-ea<-writeRaster(ea,paste0(outdir,'/','ea_day_',hv[1],'.',beg,'.',til,'.nc'),format="CDF",overwrite=TRUE,varname="ea", varunit="Pa", longname="actual vapor pressure", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(as.numeric(format(as.Date(start),'%Y'))-1,"-",12,"-",31)))
-es<-writeRaster(es,paste0(outdir,'/','es_day_',hv[1],'.',beg,'.',til,'.nc'),format="CDF",overwrite=TRUE,varname="es", varunit="Pa", longname="saturation vapor pressure", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(as.numeric(format(as.Date(start),'%Y'))-1,"-",12,"-",31)))
 
 
 return(list(Ta=Ta,ea=ea,es=es))									

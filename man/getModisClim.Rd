@@ -5,18 +5,24 @@
 \title{getModisClim}
 \usage{
 getModisClim(lat, lon, start, end, outmode = list(tile = TRUE, monthly =
-  TRUE, use.clouds = FALSE), dem, outdir = getwd(), usr = "usr",
-  pass = "pass")
+  TRUE, use.clouds = FALSE), dem, outdir = getwd(),
+  tmpdir = dirname(rasterTmpFile()), usr = "usr", pass = "pass")
 }
 \arguments{
 \item{start, }{end : data range}
 
-\item{coords}{vector c(lat,lon)}
+\item{usr, }{pass : credentials for NASA EOSDIS/LAADS}
+
+\item{coords:}{lat,lon}
 }
 \description{
-download and gapfill MOD07 and MYD07 atmospheric profiles, calculate saturated vapour pressure using dowsncaled LST from Microwave SSMI and Modis IR, if used with the option use.clouds=TRUE, additional files from MOD06 and MYD06 cloud product will be used to infer temperature and actual vapour pressure under the clouds below the tropopause.
+download and gapfill MOD07 and MYD07 atmospheric profiles (air temperature and humidity), calculate saturated vapour pressure using dowsncaled LST from Microwave SSMI and Modis IR, if used with the option use.clouds=TRUE, additional files from MOD06 and MYD06 cloud product will be used to infer temperature and actual vapour pressure under the clouds (only works it the top of the cloud is below the tropopause)
 }
 \examples{
 getModisClim()
 }
-\keyword{modis}
+\keyword{air}
+\keyword{modis,}
+\keyword{pressure}
+\keyword{temperature,}
+\keyword{vapour}
