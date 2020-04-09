@@ -783,6 +783,7 @@ if(outmode$monthly==TRUE){
 	es<-approxNA(es,rule=2)
 	monthind<-format(getZ(Ta),'%Y-%m')
 	Ta<-zApply(Ta,monthind,fun=mean,na.rm=T)
+	ea<-setZ(ea,getZ(Ta))
 	ea<-zApply(ea,monthind,fun=mean,na.rm=T)
 	dateseq_month<-as.Date(format(seq(as.Date(start),as.Date(end),by='month'),format='%Y-%m-%d'))
 	es<-setZ(es,dateseq_month)
