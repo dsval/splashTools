@@ -25,7 +25,7 @@
 #' @examples readFluxdata(filename,elev)
 readFluxdata<-function(filename,elev){
 	# testing
-	# filename<-filenames.ameriflux[5,1]
+	# filename<-filenames.fluxnet[16]
 	# filename.FLX.zip<-filenames.fluxnet[8]
 	# elev<-as.numeric(as.character(FLUXNET_2015@data$elv[22]))
 	# elev<-as.numeric(FLUXNET_mountain@data$Elev[5])
@@ -266,9 +266,10 @@ readFluxdata<-function(filename,elev){
 		}
 		
 	}
-	tc<-TA_F
+	
 	TA_F[SW_IN_F<=0]<-NA
 	TA_F<-apply.daily(TA_F,mean,na.rm=TRUE)
+	tc<-TA_F
 	# get daily vpd Pa
 	if(!is.null(fluxnet_data$VPD_F)){
 		vpd<-xts(fluxnet_data$VPD_F*100,ind)
@@ -349,6 +350,7 @@ readFluxdata<-function(filename,elev){
 	# Atmospheric pressure, Pa
 	if(!is.null(fluxnet_data$PA)){
 		patm <-1000*fluxnet_data$PA
+		patm<-apply.daily(xts(patm,ind),mean,na.rm=TRUE)
 		patm[is.na(patm)]<-elv2pres(elev)
 	}else{
 		patm <- elv2pres(elev)
@@ -384,35 +386,27 @@ readFluxdata<-function(filename,elev){
 		}
 		
 	}
-	q_l<-LE
+	# subset only measured data
+	if(!is.null(fluxnet_data$LE_F_MDS_QC)){
+		LE[fluxnet_data$LE_F_MDS_QC>1]<-NA
+	}
+	
+	#q_l<-LE
+	LE[LE<0]<-NA
+	LE<-apply.daily(LE*t_conv_f,sum,na.rm=TRUE)
+	LE[LE<=0]<-NA
 	# get daily snowmelt
 	if(!is.null(fluxnet_data$SW_OUT)){
-		alb<-fluxnet_data$SW_OUT/SW_IN_F
-		alb[fluxnet_data$SW_OUT<0]<-NA
-		# alb[SW_IN_F<=0]<-NA
-		# alb[fluxnet_data$SW_OUT>SW_IN_F]<-NA
-		alb[alb>1]<-1.0
-		alb_day<-apply.daily(alb,median,na.rm=TRUE)
-		alb_day[is.infinite(alb_day)]<-NA
-		snowmelt<-q_l
-		snowmelt[snowmelt<0]<-NA
-		snowmelt[tc<0]<-NA	
-		LE[LE<0]<-NA
-		snowmelt<-apply.daily(snowmelt*t_conv_f,sum,na.rm=TRUE)
-		# snowmelt[snowmelt==0]<-NA
-		snowmelt[alb_day<0.5 | is.na(alb_day)]<-0
-		LE<-apply.daily(LE*t_conv_f,sum,na.rm=TRUE)
-		LE[!is.na(snowmelt)]<-LE[!is.na(snowmelt)]-snowmelt[!is.na(snowmelt)]
-		LE[LE<0]<-0
+		alb_day<-apply.daily(xts(fluxnet_data$SW_OUT,ind),sum,na.rm=TRUE)/apply.daily(SW_IN_F,sum,na.rm=T)
+		snowmelt<-LE
+		snowmelt[alb_day<0.4]<-0
+		LE[alb_day>=0.4]<-NA
 		aet<-LE*(1/lv)*(1/pw)*1000.0
 		snowmelt<-snowmelt*1000/(pw*kfus)
-		snowmelt[is.na(alb_day)]<-NA
+		
 		
 	}else{
 		
-		LE[LE<0]<-NA
-		LE<-apply.daily(LE*t_conv_f,sum,na.rm=TRUE)
-		LE[LE<=0]<-NA
 		aet<-LE*(1/lv)*(1/pw)*1000.0
 		alb_day<-xts(rep(NA,length(aet)),time(aet))
 		snowmelt<-xts(rep(NA,length(aet)),time(aet))
