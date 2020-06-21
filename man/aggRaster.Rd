@@ -4,16 +4,28 @@
 \alias{aggRaster}
 \title{aggRaster}
 \usage{
-aggRaster(x, func = "mean", inmem = FALSE, varnam = "wn",
-  outdir = getwd())
+aggRaster(x, func = "mean", inmem = FALSE, outdir = getwd(), ...)
 }
 \arguments{
-\item{x, ind.months=, ouputdir}{}
+\item{x, }{Raster* object}
+
+\item{func, }{character, 'mean' or ,'sum'}
+
+\item{inmem, }{logical, if FALSE the result will be stored as a netCDF file}
+
+\item{outdir, }{character, directory path where the output will be stored if inmem=FALSE}
+
+\item{...}{additional arguments as for writeRaster, must include varnam,longname, an varunit}
+}
+\value{
+Rasterbrick object with monthly z time dimension
 }
 \description{
 Aggregate raster bricks from daily to monthly in parallel
 }
 \examples{
-splash.grid()	
+*optional run beginCluster() first, for parallel computing
+aggRaster()	
 }
-\keyword{splash}
+\keyword{aggregation,}
+\keyword{monthly}

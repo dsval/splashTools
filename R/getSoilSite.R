@@ -1,16 +1,17 @@
 #' getSoilSite
 #'
-#' Get soil data (sand, clay, OM, gravel, bulk density and depth) from soilgrids REST API, point data is from the 250m resolution dataset, calculates the weigthed mean according layer depths
+#' Get soil data from soilgrids REST API, point data is from the 250m resolution dataset, calculates the weigthed mean according layer depths
 #' @param   lat, lon
+#' @return a numeric vector with percentages of sand (w/w), clay(w/w), SOM(w/w), gravel(v/v); bulk density (g/cm3) and depth (m)
 #' @import httr 
-#' @keywords splash
+#' @keywords soil texture
 #' @export
 #' @examples
-#' splash.grid()
+#' getSoilSite(lat=8.7333,lon=-70.883333) 
 
 
 getSoilSite<-function(lat,lon){
-	# require(httr)
+	require(httr)
 	sg_query<-paste0("https://rest.soilgrids.org/query?lon=",lon,"&lat=",lat)
 	sgquery<- GET(sg_query)
 	sg_all<-content(sgquery)
@@ -37,7 +38,7 @@ getSoilSite<-function(lat,lon){
 sand<-as.numeric(sg_all$properties$SNDPPT$M)
 sand<-avg.soil.prop(sand,depth)
 clay<-as.numeric(sg_all$properties$CLYPPT$M)
-clay<-avg.soil.prop(sand,depth)
+clay<-avg.soil.prop(clay,depth)
 # transform from g/Kg OC to % OM
 OM<-as.numeric(sg_all$properties$ORCDRC$M)*1.724/10
 OM[OM<0]<-0

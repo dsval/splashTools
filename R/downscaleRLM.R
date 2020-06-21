@@ -1,13 +1,15 @@
 #' downscaleRLM
 #'
 #' Downscale precipitation or temperature using robust linear models, wrapper from the spatialEco package
-#' @param  fields on stations.sp: lat, lon, code
+#' @param  low_res_raster, raster layer, low resolution
+#' @param  high_res_raster, Raster* object
+#' @return  Raster* object, with the same resolution as high_res_raster
 #' @importFrom MASS rlm
 #' @import raster  
-#' @keywords splashTools
+#' @keywords downscale
 #' @export
 #' @examples
-#' splash.grid()
+#' downscaleRLM()
 
 downscaleRLM<-function(low_res_raster,high_res_raster){
 	# ************************************************************************

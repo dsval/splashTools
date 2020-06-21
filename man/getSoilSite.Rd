@@ -9,10 +9,14 @@ getSoilSite(lat, lon)
 \arguments{
 \item{lat, }{lon}
 }
+\value{
+a numeric vector with percentages of sand (w/w), clay(w/w), SOM(w/w), gravel(v/v); bulk density (g/cm3) and depth (m)
+}
 \description{
-Get soil data (sand, clay, OM, gravel, bulk density and depth) from soilgrids REST API, point data is from the 250m resolution dataset, calculates the weigthed mean according layer depths
+Get soil data from soilgrids REST API, point data is from the 250m resolution dataset, calculates the weigthed mean according layer depths
 }
 \examples{
-splash.grid()
+getSoilSite(lat=8.7333,lon=-70.883333) 
 }
-\keyword{splash}
+\keyword{soil}
+\keyword{texture}

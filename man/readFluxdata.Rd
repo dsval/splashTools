@@ -16,23 +16,25 @@ xts dataframe with the following variables:
 \itemize{
         \item \code{aet}: actual evapotranspiration (mm/day)
         \item \code{pet}: potential evapotranspiration (mm/day)
-        \item \code{eeq}: Equilibrium evapotranspiration (mm/day)
+        \item \code{eeq}: equilibrium evapotranspiration (mm/day)
         \item \code{tc}: daily daytime air temperature (C)
         \item \code{SW_in}: daily incoming shortwave (W/m^2)
         \item \code{pn}: daily precipitation (mm/day)
         \item \code{sm}: daily soil moisture (volumetric %)
         \item \code{netr}: daily daytime net radiation (MJ/day)
         \item \code{VPD}: daily daytime vapour pressure deficit (Pa)
+        \item \code{VPD_SA}: daily daytime vapour pressure deficit surface-air (Pa)(calculated using Tsurf, measured or inferred from LW)
         \item \code{CO2}: daily daytime CO2 concentration (ppm)
         \item \code{GPP}: daily GPP (gC/m^2/day)
         \item \code{snowmelt}: daily snowmelt (mm/day)---experimental
         \item \code{alb}: daily median albedo ---experimental
+        \item \code{cond}: daily condensation (mm/day) ---experimental, negative LE migth mean refreezing
 }
 }
 \description{
-Reads fluxnet data, calculates daily cuantities, including evapotranspiration. VPD, air temperature, and netrad use the daily daytime, albedo and snowmelt are still in experimental stage, the function takes only positive latent heat to compute actual evapotrasnpiration, the function works for the fluxnet tier 1-2 datasets, ameriflux and europa flux.
+Reads fluxnet data, calculates daily cuantities, including evapotranspiration. VPD, air temperature, and netrad use the daily daytime, albedo and snowmelt are still in experimental stage, the function takes only positive latent heat to compute actual evapotranspiration, the function works for the fluxnet tier 1-2 datasets, ameriflux and europa flux.
 }
 \examples{
 readFluxdata(filename,elev)
 }
-\keyword{splash}
+\keyword{fluxnet}

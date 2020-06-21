@@ -7,12 +7,17 @@
 clipGrid(raster, poly)
 }
 \arguments{
-\item{raster, poly}{}
+\item{raster, }{Raster* object}
+
+\item{poly, }{a SpatialPolygons* object}
+}
+\value{
+A Raster* object
 }
 \description{
-clips and mask a raster object, based on a polgon
+clips and mask a raster object, based on a polygon
 }
 \examples{
-splash.grid()
+clipGrid()
 }
 \keyword{splash}

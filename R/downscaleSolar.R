@@ -1,15 +1,33 @@
 #' downscaleSolar
 #'
-#' Dowsncale solar radiation grid data by getting the transmitance from extraterrestrial radiation, and applying slope corrections, returns w/m2
-#' @param  elev_hres,rad_lowres,ouputdir
+#' Downscale solar radiation grid applying corrections for terrain features
+#' @param  elev_hres, elevation, a high resolution Raster layer object
+#' @param  rad_lowres, solar radiation (w/m2), the low resolution Raster* object with z time dimension
+#' @param  ouputdir, directory where to save the files
+#' @return  solar radiation (w/m2), Raster* object with the resolution of elev_hres and the same z time dimension as rad_lowres
 #' @import raster  
-#' @keywords splash
+#' @keywords Downscale, solar radiation, terrain
 #' @export
 #' @examples
-#' splash.grid()
+#' # *optional run beginCluster() first, for parallel computing
+#' downscaleSolar()
 downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem=FALSE, ...){
 	
-	rasterOptions(maxmemory=1e9, timer=TRUE, tmptime = 24, chunksize = 1e9,progress='text', overwrite=TRUE,tolerance=0.5,todisk=FALSE)
+	###########################################################################
+	# 00. Check if parallel computation is required by the user and if the dimensions of the raster objects match
+	###########################################################################
+	on.exit(endCluster())
+	clcheck<-try(getCluster(), silent=TRUE)
+	if(class(clcheck)=="try-error"){
+		# If no cluster is initialized, assume only one core will do the calculations, beginCluster(1) saved me the time of coding serial versions of the functions
+		beginCluster(1,'SOCK')
+		message('Only using one core, use first beginCluster() if you want to run splash in parallel!!')
+		
+	}
+	rasterOptions(tolerance = 0.5)
+	compareRaster(rad_lowres, elev_lowres,extent=TRUE, crs=TRUE, res=TRUE, orig=FALSE,rotation=FALSE, values=FALSE, stopiffalse=FALSE, showwarning=TRUE)	
+	
+	
 	###############################################################################################
 	# 00. create array for results, get time info
 	###############################################################################################
@@ -80,7 +98,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	# n <- seq(nlayers(terraines)) 
 	# cat('fixing nas terrain')
 	# terraines<-stack(lapply(X=n, FUN=fillna, x=terraines),quick=TRUE)
-	setwd(ouputdir)
+	#setwd(ouputdir)
 	# rasterOptions(maxmemory=1e8, timer=TRUE, tmptime = 24, chunksize = 1e8, overwrite=TRUE,tolerance=0.5,todisk=FALSE)
 	###########################################################################
 	# 02. Define functions
@@ -297,9 +315,8 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 		# to avoid NA's at polar nigths, tau only defined by elevation, assume clear sky
 		tau<-ifelse(rad_in>ra_d | ra_d <= 0,(kc + kd)*(1 + (2.67e-5)*elev),rad_in/ra_d)
 		sf<-((tau/(1 + (2.67e-5)*elev))-kc)/kd
-		# kc and kd are not working for the whole world some pixels give these errors
-		sf[sf>1]<-1.0
-		sf[sf<0]<-0.0
+		# kc and kd are not working for the whole world some pixels give errors, normalize sf to {0,1}
+		sf<-(sf-min(sf,na.rm = T))/(max(sf,na.rm = T)-min(sf,na.rm = T))
 		return(sf)
 		
 	}
@@ -541,7 +558,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	on.exit( returnCluster() )
 	nodes <- length(cl)
 	message('getting sf with ', nodes, ' nodes')
-	bs <- blockSize(rad_lowres, minblocks=nodes*10)
+	bs <- blockSize(rad_lowres, minblocks=nodes)
 	parallel:::clusterExport(cl, c('y','calc_sf','doy','bs','rad_lowres','elev_lowres','lat_lr'),envir=environment()) 
 	pb <- pbCreate(bs$n)
 	pb <- txtProgressBar(min=1,max = bs$n, style = 1)
@@ -618,8 +635,8 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	close(pb)
 	gc()
 	# 1.3  fillnas sf
-	n <- seq(nlayers(sf)) 
-	sf<-stack(lapply(X=n, FUN=fillna, x=sf),quick=TRUE)
+	# n <- seq(nlayers(sf)) 
+	# sf<-stack(lapply(X=n, FUN=fillna, x=sf),quick=TRUE)
 	
 	###############################################################################################
 	# 09. project low res raster to hd resolution
@@ -637,7 +654,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	# 10. set the clusters for rad parallel computing
 	###############################################################################################	
 		
-	bs <- blockSize(sf_hres, minblocks=nodes*100)
+	bs <- blockSize(sf_hres, minblocks=nodes*10)
 	message('computing sw with ', nodes, ' nodes')
 	parallel:::clusterExport(cl, c('y','calc_sw_in','doy','bs','sf_hres','elev_hres','lat_hr','terraines'),envir=environment()) 
 	pb <- pbCreate(bs$n)

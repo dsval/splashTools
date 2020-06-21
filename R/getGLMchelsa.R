@@ -19,8 +19,9 @@ getGLMchelsa<-function(model,scenario,yr,outdir=getwd()){
 		yr_dir<-'/2061-2080/'
 		yr_info<-'2061-2080'
 	}
-	url_prec<-paste0('https://www.wsl.ch/lud/chelsa/data/cmip5',yr_dir,'prec/')
-	url_temp<-paste0('https://www.wsl.ch/lud/chelsa/data/cmip5',yr_dir,'temp/')
+	url_prec<-paste0('https://envidatrepo.wsl.ch/uploads/chelsa/chelsa_V1/cmip5',yr_dir,'prec/')
+	url_temp<-paste0('https://envidatrepo.wsl.ch/uploads/chelsa/chelsa_V1/cmip5',yr_dir,'temp/')
+	
 	# get the links for precipitation	
 	doc_prec <- read_html(url_prec)
 	all_prec <- html_attr(html_nodes(doc_prec, "a"), "href")
@@ -55,8 +56,10 @@ getGLMchelsa<-function(model,scenario,yr,outdir=getwd()){
 	
 	
 	
-	prec<-writeRaster(dataset_prec,options=c("COMPRESS=DEFLATE", "ZLEVEL=5"),filename=paste0(outdir,'/',prec_filename,'_',yr_info,'.nc'), format="CDF", overwrite=TRUE,varname="prec", varunit="mm",longname='projection precipitation GLM', xname="lon", yname="lat")
-	temp<-writeRaster(dataset_temp,options=c("COMPRESS=DEFLATE", "ZLEVEL=5"),filename=paste0(outdir,'/',temp_filename,'_',yr_info,'.nc'), format="CDF", overwrite=TRUE,varname="temp", varunit="C/10",longname='projection temperature GLM', xname="lon", yname="lat")
+system.time(prec<-writeRaster(dataset_prec,datatype='INT2S',force_v4=TRUE,chunksizes=c(4116,1990,1),filename=paste0(outdir,'/',prec_filename,'_',yr_info,'.nc'), format="CDF", overwrite=TRUE,varname="prec", varunit="mm",longname='projection precipitation GLM', xname="lon", yname="lat"))
+
+
+	temp<-writeRaster(dataset_temp,datatype='INT2S',force_v4=TRUE, filename=paste0(outdir,'/',temp_filename,'_',yr_info,'.nc'), format="CDF", overwrite=TRUE,varname="temp", varunit="C*10",longname='projection temperature GLM', xname="lon", yname="lat")
 	
 	return(list(prec,temp))
 }

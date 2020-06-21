@@ -9,6 +9,6 @@ Encoding: UTF-8
 LazyData: true
 Author: David Sandoval <dsandovalhdh@gmail.com> [aut, cre]
 Maintainer: 'David Sandoval' <dsandovalhdh@gmail.com>
-Imports: raster, rgdal, doSNOW, xts, hydroTSM, RNRCS, daymetr, matrixStats, httr, soilDB
+Imports: raster, rgdal, MASS, xts, hydroTSM, RNRCS, daymetr, matrixStats, httr, soilDB
 ByteCompile: TRUE
-RoxygenNote: 6.1.1
+RoxygenNote: 7.1.0

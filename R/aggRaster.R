@@ -1,14 +1,34 @@
 #' aggRaster
 #'
 #' Aggregate raster bricks from daily to monthly in parallel
-#' @param  x,ind.months=,ouputdir
+#' @param  x, Raster* object
+#' @param  func, character, 'mean' or ,'sum'
+#' @param  inmem, logical, if FALSE the result will be stored as a netCDF file
+#' @param  outdir, character, directory path where the output will be stored if inmem=FALSE
+#' @param  ... additional arguments as for writeRaster, must include varnam,longname, an varunit
+#' @return  Rasterbrick object with monthly z time dimension
 #' @import raster  
-#' @keywords splash
+#' @keywords aggregation, monthly
 #' @export
 #' @examples
-#' splash.grid()	
+#' *optional run beginCluster() first, for parallel computing
+#' aggRaster()	
 	
-aggRaster<-function(x,func='mean',inmem=FALSE,varnam='wn',outdir=getwd()){
+aggRaster<-function(x,func='mean',inmem=FALSE,outdir=getwd(), ... ){
+	###########################################################################
+	# 00. Check if parallel computation is required by the user and if the dimensions of the raster objects match
+	###########################################################################
+	on.exit(endCluster())
+	clcheck<-try(getCluster(), silent=TRUE)
+	if(class(clcheck)=="try-error"){
+		# If no cluster is initialized, assume only one core will do the calculations, beginCluster(1) saved me the time of coding serial versions of the functions
+		beginCluster(1,'SOCK')
+		message('Only using one core, use first beginCluster() if you want to run splash in parallel!!')
+		
+	}
+	
+
+	
 			###############################################################################################
 			# 00. create array for results, fluxes: mm/day, storages (wn, snow): mm
 			###############################################################################################
@@ -25,10 +45,10 @@ aggRaster<-function(x,func='mean',inmem=FALSE,varnam='wn',outdir=getwd()){
 			# 01. set the clusters for parallel computing
 			###############################################################################################	
 			cl <- getCluster()
-			on.exit( returnCluster() )
+			#on.exit( returnCluster() )
 			nodes <- length(cl)
 			bs <- blockSize(x, minblocks=nodes*10)
-			parallel::clusterExport(cl, varlist=c('x','func','indmonth','bs'),envir=environment()) 
+			parallel:::clusterExport(cl, c('x','func','indmonth','bs'),envir=environment()) 
 			pb <- pbCreate(bs$n)
 			pb <- txtProgressBar(min=1,max = bs$n, style = 1)
 			###############################################################################################
@@ -55,34 +75,35 @@ aggRaster<-function(x,func='mean',inmem=FALSE,varnam='wn',outdir=getwd()){
 			###############################################################################################
 			# 04. write to the disk on the go, or save to the ram
 			###############################################################################################
-			if(varnam=='wn'){
-				longname='monthly soil moisture'
-				varunit='mm'
-			}else if(varnam=='ro'){
-				longname='monthly runoff'
-				varunit='mm'
-			}else if(varnam=='pet'){
-				longname='monthly potential evapotranspiration'
-				varunit='mm'
-			}else if(varnam=='aet'){
-				longname='monthly actual evapotranspiration'
-				varunit='mm'
-			}else if(varnam=='snow'){
-				longname='monthly snow water equivalent'
-				varunit='mm'
-			}else if(varnam=='cond'){
-				longname='monthly condensation'
-				varunit='mm'
-			}else if(varnam=='bflow'){
-				longname='monthly baseflow'
-				varunit='mm'
-			}else if(varnam=='sw_in'){
-				longname='monthly solar radiation'
-				varunit='mm'
-			}else if(varnam=='ppfd'){
-				longname='monthly photon flux density'
-				varunit='mol/m2/month'
-			} 
+			# if(varnam=='wn'){
+			# 	longname='monthly soil moisture'
+			# 	varunit='mm'
+			# }else if(varnam=='ro'){
+			# 	longname='monthly runoff'
+			# 	varunit='mm'
+			# }else if(varnam=='pet'){
+			# 	longname='monthly potential evapotranspiration'
+			# 	varunit='mm'
+			# }else if(varnam=='aet'){
+			# 	longname='monthly actual evapotranspiration'
+			# 	varunit='mm'
+			# }else if(varnam=='snow'){
+			# 	longname='monthly snow water equivalent'
+			# 	varunit='mm'
+			# }else if(varnam=='cond'){
+			# 	longname='monthly condensation'
+			# 	varunit='mm'
+			# }else if(varnam=='bflow'){
+			# 	longname='monthly baseflow'
+			# 	varunit='mm'
+			# }else if(varnam=='sw_in'){
+			# 	longname='monthly solar radiation'
+			# 	varunit='mm'
+			# }else if(varnam=='ppfd'){
+			# 	longname='monthly photon flux density'
+			# 	varunit='mol/m2/month'
+			# } 
+			
 			if(!inmem){
 				out<-writeStart(out,filename=paste0(outdir,"/",y[1],"_",y[length(y)],".",varnam,".","nc"),format="CDF",overwrite=TRUE,varname=varnam, varunit=varunit,
 					longname=longname, xname="lon", yname="lat", zname="time", zunit=paste("months","since",paste0(y[1]-1,"-",12)))

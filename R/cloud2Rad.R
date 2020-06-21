@@ -1,15 +1,28 @@
 #' cloud2Rad
-#'
-#' Dowsncale solar radiation grid data by getting the transmitance from extraterrestrial radiation, and applying slope corrections, returns w/m2
-#' @param  elev_hres,rad_lowres,ouputdir
+#' Compute mean solar radiation (W/m2 ) by using the classic AP formula and the elevation effect on the atmosphere's transmittance, as described by Davis et al., (2017)
+#' @param  elev_lowres, elevation (masl), Raster layer
+#' @param  clds, cloudiness, (fraction), Raster* object with z time dimension
+#' @param  ouputdir, directory where to save the files
+#' @return  A RasterBrick object with the mean solar radiation (W/m2 ) with the same dimensions as clds
 #' @import raster  
 #' @keywords splash
 #' @export
 #' @examples
-#' splash.grid()
+#' *optional run beginCluster() first, for parallel computing
+#' cloud2Rad()
 cloud2Rad<-function(clds,elev_lowres,ouputdir=getwd(),inmem=FALSE, ...){
 	
-	# rasterOptions(maxmemory=1e9, timer=TRUE, tmptime = 24, chunksize = 1e8, overwrite=TRUE,tolerance=0.5,todisk=FALSE)
+	###########################################################################
+	# 00. Check if parallel computation is required by the user and if the dimensions of the raster objects match
+	###########################################################################
+	on.exit(endCluster())
+	clcheck<-try(getCluster(), silent=TRUE)
+	if(class(clcheck)=="try-error"){
+		# If no cluster is initialized, assume only one core will do the calculations, beginCluster(1) saved me the time of coding serial versions of the functions
+		beginCluster(1,'SOCK')
+		message('Only using one core, use first beginCluster() if you want to run splash in parallel!!')
+		
+	}
 	###############################################################################################
 	# 00. create array for results, get time info
 	###############################################################################################
@@ -290,10 +303,10 @@ cloud2Rad<-function(clds,elev_lowres,ouputdir=getwd(),inmem=FALSE, ...){
 	# 10. set the clusters for rad parallel computing
 	###############################################################################################	
 	cl <- getCluster()
-	on.exit( returnCluster() )
+	
 	nodes <- length(cl)
 	message('Using cluster with ', nodes, ' nodes')	
-	bs <- blockSize(sf, minblocks=nodes*10)
+	bs <- blockSize(sf, minblocks=nodes*2)
 	snow:::clusterExport(cl, c('y','calc_sw_in','doy','bs','sf','elev_lowres','lat_lr','terraines'),envir=environment()) 
 	cl
 	pb <- pbCreate(bs$n)

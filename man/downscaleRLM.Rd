@@ -7,12 +7,17 @@
 downscaleRLM(low_res_raster, high_res_raster)
 }
 \arguments{
-\item{fields}{on stations.sp: lat, lon, code}
+\item{low_res_raster, }{raster layer, low resolution}
+
+\item{high_res_raster, }{Raster* object}
+}
+\value{
+Raster* object, with the same resolution as high_res_raster
 }
 \description{
 Downscale precipitation or temperature using robust linear models, wrapper from the spatialEco package
 }
 \examples{
-splash.grid()
+downscaleRLM()
 }
-\keyword{splashTools}
+\keyword{downscale}

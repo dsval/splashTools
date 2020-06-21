@@ -1,22 +1,23 @@
-#' interpolateForcing
+#' krigeForcing
 #'
-#' Wrapper of the hydroTSM::hydrokrige to interpolate over time series in parallel
-#' @param  fields on stations.sp: lat, lon, code
-#' @import doSNOW 
+#' Wrapper of the hydroTSM::hydrokrige to apply automatic kriging over time series in parallel*
+#' @param  stations.sp: SpatialPointsDataFrame object, mandatory attributes : lat, lon, code of the station, min 4 points
+#' @param  data.df: xts matrix, names of the columns should be the same as in stations.sp$code
+#' @param  dem: Raster layer, elevation (masl)
+#' @return  A RasterBrick object with z time dimension saved to outdir as a netcdf file
 #' @import raster  
 #' @importFrom xts xts
-#' @importFrom parallel detectCores
 #' @importFrom hydroTSM hydrokrige
 #' @keywords splash
 #' @export
 #' @examples
-#' splash.grid()
+#' *optional run beginCluster() first, for parallel computing
+#' krigeForcing()
 
-interpolateForcing<-function(stations.sp,data.df,dem,outdir=getwd()){
+krigeForcing<-function(stations.sp,data.df,dem,outdir=getwd()){
 	###############################################################################################
 	# Calling libraries
 	###############################################################################################
-	# require(doSNOW)
 	# require(raster)
 	# require(hydroTSM)
 	# require(xts)
@@ -26,8 +27,19 @@ interpolateForcing<-function(stations.sp,data.df,dem,outdir=getwd()){
 	# stations.sp$code<-stations.sp@data$Código_iM
 	# data.df<-prececu2012
 	# end testing
+	###########################################################################
+	# 00. Check if parallel computation is required by the user and if the dimensions of the raster objects match
+	###########################################################################
+	on.exit(endCluster())
+	clcheck<-try(getCluster(), silent=TRUE)
+	if(class(clcheck)=="try-error"){
+		# If no cluster is initialized, assume only one core will do the calculations, beginCluster(1) saved me the time of coding serial versions of the functions
+		beginCluster(1,'SOCK')
+		message('Only using one core, use first beginCluster() if you want to run splash in parallel!!')
+		
+	}
 	y<-as.numeric(unique(format(time(data.df),'%Y')))
-	ncores<-parallel::detectCores()-1
+	
 	wgs<-"+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 	###############################################################################################
 	# 00. Setting up the inputs
@@ -58,26 +70,16 @@ interpolateForcing<-function(stations.sp,data.df,dem,outdir=getwd()){
 		return(list(zone=zone,hemisphere = hemisphere))
 	}
 	# get utm projection info
-	if(as.character(crs(stations.sp))==wgs){
+	if(as.character(crs(stations.sp))!=wgs){
 		centroid<-c((stations.sp@bbox[1,1]+stations.sp@bbox[1,2]),(stations.sp@bbox[2,1]+stations.sp@bbox[2,2]))/2
 		utm.info<-find_zone(centroid[1],centroid[2])
 		utm_proj<-CRS(paste0("+proj=utm +zone=",utm.info$zone," +",utm.info$hemisphere," +datum=WGS84 +units=m +no_defs+ellps=WGS84 +towgs84=0,0,0"))
 		stations.sp<-spTransform(stations.sp,utm_proj)
-	}else{
-		if(as.character(crs(dem))==wgs){
-			cat("reprojecting dem to UTM")
-			beginCluster(ncores, type='SOCK')
-			dem<-projectRaster(dem,crs=crs(stations.sp),filename="dem.grd",overwrite=TRUE)
-			endCluster()
-			gc()
-		}
 	}
-	
-	
-	
-	# reprojecting
-	
-	
+	if(as.character(crs(dem))!=as.character(crs(stations.sp))){
+		cat("reprojecting dem to UTM")
+		dem<-projectRaster(dem,crs=crs(stations.sp),filename="dem.grd",overwrite=TRUE)
+	}
 	
 	###############################################################################################
 	# 02. assigning elevation to coordinates
@@ -99,7 +101,7 @@ interpolateForcing<-function(stations.sp,data.df,dem,outdir=getwd()){
 		xts.dfs[[i]]<-as.numeric(data.df[i,])
 		names(xts.dfs[[i]])<-colnames(data.df)
 	}
-	gc()
+	
 	###############################################################################################
 	# 05. Building the spatial dataframes
 	###############################################################################################
@@ -109,6 +111,7 @@ interpolateForcing<-function(stations.sp,data.df,dem,outdir=getwd()){
 	###############################################################################################
 	# 05. Interpolating all timesteps in parallel
 	###############################################################################################
+	
 	p4s <- crs(stations.sp)
 	build.lay<-function(x,y){
 		# x= datafrom xts.dfs
@@ -129,15 +132,13 @@ interpolateForcing<-function(stations.sp,data.df,dem,outdir=getwd()){
 	}
 	# create empty array
 	x.ked<-vector("list", length(data.df[,1]))
-	ncores<-parallel::detectCores()-1 
-	cl <- makeCluster(ncores)
-	registerDoSNOW(cl)
 		
-	# x.ked<-mapply(FUN=build.lay,xts.dfs,x.ked)
-	gc()
-	snow::clusterEvalQ(cl, library("hydroTSM"))
-	snow::clusterExport(cl, list=c("xts.dfs","x.ked","xgis","dem.sgdf","p4s","build.lay"),envir=environment()) 
-	x.ked<-snow::clusterMap(cl = cl, fun=build.lay,xts.dfs,x.ked)	
+	cl<-getCluster()
+
+	parallel::clusterEvalQ(cl, library("hydroTSM"))
+	parallel::clusterExport(cl, c("xts.dfs","x.ked","xgis","dem.sgdf","p4s","build.lay"),envir=environment()) 
+	cat("Kriging",length(data.df[,1]),'layers',"\n")
+	x.ked<-parallel::clusterMap(cl = cl, fun=build.lay,xts.dfs,x.ked)	
 	# identify zero values
 	indtemp<-which(sapply(x.ked, FUN=function(X) class(X)=="SpatialGridDataFrame"))
 	# create a spatial template with zero values
@@ -152,17 +153,17 @@ interpolateForcing<-function(stations.sp,data.df,dem,outdir=getwd()){
 		}
 	}
 	x.ked<-lapply(x.ked,replacezero)
-	stopCluster(cl)	
+	
 	gc()
 	# build the rasters
 	x.ked<-lapply(x.ked,raster)
 	x.ked<-stack(x.ked)
 	x.ked[x.ked<0.0]<-0.0
 	# reproject to wgs and write
-	beginCluster(ncores, type='SOCK')
-	x.ked<-projectRaster(x.ked,crs=wgs,filename=paste0(outdir,"/",y[1],"_",y[length(y)],".","pn",".","nc"),format="CDF",overwrite=TRUE,varname="pn", varunit="mm", longname="Precipitation", xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(y[1]-1,"-",12,"-",31)))
-	endCluster()
-	gc()
+
+	x.ked<-projectRaster(setZ(x.ked,as.Date(time(data.df))),crs=wgs,filename=paste0(outdir,"/",y[1],"_",y[length(y)],".","pn",".","nc"),format="CDF",overwrite=TRUE,varname="pn", varunit="mm", longname="Precipitation", xname="lon", yname="lat", zname="time")
+
+
 	return(x.ked)
 	
 	

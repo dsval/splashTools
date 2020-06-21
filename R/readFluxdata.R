@@ -1,40 +1,45 @@
 #' readFluxdata
 #'
-#' Reads fluxnet data, calculates daily cuantities, including evapotranspiration. VPD, air temperature, and netrad use the daily daytime, albedo and snowmelt are still in experimental stage, the function takes only positive latent heat to compute actual evapotrasnpiration, the function works for the fluxnet tier 1-2 datasets, ameriflux and europa flux.
+#' Reads fluxnet data, calculates daily cuantities, including evapotranspiration. VPD, air temperature, and netrad use the daily daytime, albedo and snowmelt are still in experimental stage, the function takes only positive latent heat to compute actual evapotranspiration, the function works for the fluxnet tier 1-2 datasets, ameriflux and europa flux.
 #' @param   filename: location of the csv file with subdaily data
 #' @param   elev: elevation in m.a.s.l.
-#' @import xts 
-#' @keywords splash
+#' @import xts
+#' @import data.table
+#' @keywords fluxnet
 #' @return xts dataframe with the following variables:
 #' \itemize{
 #'         \item \code{aet}: actual evapotranspiration (mm/day)
 #'         \item \code{pet}: potential evapotranspiration (mm/day)
-#'         \item \code{eeq}: Equilibrium evapotranspiration (mm/day)
+#'         \item \code{eeq}: equilibrium evapotranspiration (mm/day)
 #'         \item \code{tc}: daily daytime air temperature (C)
 #'         \item \code{SW_in}: daily incoming shortwave (W/m^2)
 #'         \item \code{pn}: daily precipitation (mm/day)
 #'         \item \code{sm}: daily soil moisture (volumetric %)
 #'         \item \code{netr}: daily daytime net radiation (MJ/day)
 #'         \item \code{VPD}: daily daytime vapour pressure deficit (Pa)
+#'         \item \code{VPD_SA}: daily daytime vapour pressure deficit surface-air (Pa)(calculated using Tsurf, measured or inferred from LW)
 #'         \item \code{CO2}: daily daytime CO2 concentration (ppm)
 #'         \item \code{GPP}: daily GPP (gC/m^2/day)
 #'         \item \code{snowmelt}: daily snowmelt (mm/day)---experimental
 #'         \item \code{alb}: daily median albedo ---experimental
+#'         \item \code{cond}: daily condensation (mm/day) ---experimental, negative LE migth mean refreezing
 #' }
 #' @export
 #' @examples readFluxdata(filename,elev)
 readFluxdata<-function(filename,elev){
 	# testing
-	# filename<-filenames.fluxnet[16]
+	# filename<-filenames.fluxnet[3]
+	#filename<-filenames.europaflux[70,1]
 	# filename.FLX.zip<-filenames.fluxnet[8]
 	# elev<-as.numeric(as.character(FLUXNET_2015@data$elv[22]))
-	# elev<-as.numeric(FLUXNET_mountain@data$Elev[5])
+	# elev<-300
 	
 	# fluxnet_data<-read.table(unz(filename.FLX.zip, filename),  header=T, quote="\"", sep=",",na.strings = -9999)
 	###############################################################################################
 	# 01. Read the data, assign time info, get the time interval, define the time interval in seconds t_conv_f
 	###############################################################################################	
-	fluxnet_data<-read.table(filename,  header=T, quote="\"", sep=",",na.strings = -9999)
+	# fluxnet_data<-read.table(filename,  header=T, quote="\"", sep=",",na.strings = -9999)
+	fluxnet_data<-data.table::fread(filename,  header=T, quote="\"", sep=",",na.strings = "-9999",integer64="character")
 	# fluxnet_data[fluxnet_data==-9999]<-NA
 	ind<-strptime(fluxnet_data$TIMESTAMP_START,format="%Y%m%d%H%M",tz="GMT")
 	time.freq<-abs(as.numeric(ind[1]-ind[2], units = "hours"))
@@ -72,6 +77,7 @@ readFluxdata<-function(filename,elev){
 	ke <- 0.01670       # eccentricity of earth's orbit, 2000CE (Berger 1978)
 	keps <- 23.44       # obliquity of earth's elliptic, 2000CE (Berger 1978)
 	komega <- 283       # lon. of perihelion, degrees, 2000CE (Berger, 1978)
+	ksig <- 5.670374e-8    # Stefan-Boltzmann constant https://physics.nist.gov/cgi-bin/cuu/Value?sigma
 	###############################################################################################
 	# 03.define the functions
 	###############################################################################################
@@ -237,9 +243,12 @@ readFluxdata<-function(filename,elev){
 	}
 	
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		
 	###############################################################################################
 	# 03.define the daily variables
 	###############################################################################################
+	
+	
 	
 	# get daily SW in w/m2 
 	if(!is.null(fluxnet_data$SW_IN_F)){
@@ -266,10 +275,14 @@ readFluxdata<-function(filename,elev){
 		}
 		
 	}
-	
+	#temperature where LE is negative tcond
+	t_cond<-TA_F
+	#daytime temperature tc
 	TA_F[SW_IN_F<=0]<-NA
-	TA_F<-apply.daily(TA_F,mean,na.rm=TRUE)
 	tc<-TA_F
+	#mean daytime air temperature TA_F
+	TA_F<-apply.daily(TA_F,mean,na.rm=TRUE)
+	
 	# get daily vpd Pa
 	if(!is.null(fluxnet_data$VPD_F)){
 		vpd<-xts(fluxnet_data$VPD_F*100,ind)
@@ -293,6 +306,46 @@ readFluxdata<-function(filename,elev){
 	}
 	vpd[SW_IN_F<=0]<-NA
 	vpd<-apply.daily(vpd,mean,na.rm=TRUE)
+	###############################################################################################
+	# get daily vpd leaf - air
+	###############################################################################################
+	if(!is.null(fluxnet_data$T_CANOPY)){
+		Tsurf<-xts(fluxnet_data$T_CANOPY,ind)
+		Tsurf[SW_IN_F<=0]<-NA
+		Tsurf<-apply.daily(Tsurf,mean,na.rm=TRUE)
+		#Calculate surfate temperature assuming emissivity 0.97
+	}else{
+		if(!is.null(fluxnet_data$LW_OUT)){
+			if(!is.null(fluxnet_data$LW_IN_F)){
+				Tsurf<-(((fluxnet_data$LW_OUT-(1-0.97)*fluxnet_data$LW_IN_F)/(ksig*0.97))^(1/4))-273.15
+			}else if(!is.null(fluxnet_data$LW_IN)){
+				Tsurf<-(((fluxnet_data$LW_OUT-(1-0.97)*fluxnet_data$LW_IN)/(ksig*0.97))^(1/4))-273.15
+			}
+			Tsurf[SW_IN_F<=0]<-NA
+			# subset only measured data
+			if(!is.null(fluxnet_data$LW_IN_F_QC)){
+				Tsurf[fluxnet_data$LW_IN_F_QC>1]<-NA
+			}
+			Tsurf<-xts(Tsurf,ind)
+			Tsurf<-apply.daily(Tsurf,mean,na.rm=TRUE)
+			
+		}else{
+			
+			Tsurf<-xts(rep(NA,length(vpd)),time(vpd))
+		}
+	}	
+	
+	
+	# air saturation vapour pressure [Pa]
+	es<-sat_vap(TA_F)
+	#actual water vapour pressure 
+	ea<-es-vpd
+	# surface saturation vapour pressure [Pa]
+	es_L<-0.6108*1000*exp((17.27*Tsurf)/(Tsurf+237.3))
+	#vpd surface air
+	vpd_sa<-es_L-ea
+	vpd_sa[vpd_sa<0]<-0
+	
 	
 	# get daily co2 ppm
 	if(!is.null(fluxnet_data$CO2_F_MDS)){
@@ -330,7 +383,7 @@ readFluxdata<-function(filename,elev){
 		
 	}
 		
-	# get daily gpp gC/m2
+	# get daily gpp from umolCO2/m2/s to gC/m2/day
 	if(!is.null(fluxnet_data$GPP_NT_VUT_REF)){
 		gpp<-xts(fluxnet_data$GPP_NT_VUT_REF*t_conv_f*1e-6,ind)
 	}else{
@@ -355,23 +408,29 @@ readFluxdata<-function(filename,elev){
 	}else{
 		patm <- elv2pres(elev)
 	}
-	# 3.1. Calculate water-to-energy conversion (econ), m^3/J
+	# 3.1. Calculate water-to-energy conversion (econ) daytime, m^3/J
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# Slope of saturation vap press temp curve, Pa/K
-	s <- sat_slope(tc)
+	s <- sat_slope(TA_F)
 	# Enthalpy of vaporization, J/kg
-	lv <- enthalpy_vap(tc)
+	lv <- enthalpy_vap(TA_F)
 	# Density of water, kg/m^3
-	pw <- density_h2o(tc, patm)
+	pw <- density_h2o(TA_F, patm)
 	# Psychrometric constant, Pa/K
-	gam <- psychro(tc, patm)
+	gam <- psychro(TA_F, patm)
 	# get factor to convert energy to water flux J/m^3
 	econ <- s/(lv*pw*(s + gam))
+	
 	
 	
 	# ET
 	
 	# get actual evapotranspiration and potential (mm/day) *1000 from m3 to litres, t_conv_f to seconds to half hour
+	if(!is.null(fluxnet_data$LE_SSITC_TEST)& is.null(fluxnet_data$LE_F_MDS_QC)){
+		LE_QF<-fluxnet_data$LE_SSITC_TEST
+	}else if(is.null(fluxnet_data$LE_SSITC_TEST)& !is.null(fluxnet_data$LE_F_MDS_QC)){
+		LE_QF<-fluxnet_data$LE_F_MDS_QC
+	}
 	if(!is.null(fluxnet_data$LE_CORR)){
 		LE<-xts(fluxnet_data$LE_CORR,ind)
 	}else{
@@ -387,11 +446,16 @@ readFluxdata<-function(filename,elev){
 		
 	}
 	# subset only measured data
-	if(!is.null(fluxnet_data$LE_F_MDS_QC)){
-		LE[fluxnet_data$LE_F_MDS_QC>1]<-NA
-	}
-	
-	#q_l<-LE
+	LE[LE_QF>1]<-NA
+	#aggregate daily negative LE	
+	cond_LE<-LE
+	t_cond[cond_LE>0]<-NA
+	cond_LE[cond_LE>0]<-NA
+	cond_LE<-apply.daily(-1*cond_LE*t_conv_f,sum,na.rm=TRUE)
+	cond_LE[cond_LE<=0]<-NA
+	#mean air temperature when LE is negative
+	t_cond<-apply.daily(t_cond,mean,na.rm=TRUE)
+	#aggregate daily positive LE
 	LE[LE<0]<-NA
 	LE<-apply.daily(LE*t_conv_f,sum,na.rm=TRUE)
 	LE[LE<=0]<-NA
@@ -411,7 +475,19 @@ readFluxdata<-function(filename,elev){
 		alb_day<-xts(rep(NA,length(aet)),time(aet))
 		snowmelt<-xts(rep(NA,length(aet)),time(aet))
 	}
-	
+	#smooth albedo to monthly
+	alb_day<-apply.monthly(alb_day,median)
+	alb_day<-na.approx(alb_day,xout=time(aet),na.rm=F)
+	# 3.1. Calculate water-to-energy conversion (econ) migthtime, m^3/J
+	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	# Slope of saturation vap press temp curve, Pa/K
+	s_n <- sat_slope(t_cond)
+	# Enthalpy of vaporization, J/kg
+	lv_n <- enthalpy_vap(t_cond)
+	# Density of water, kg/m^3
+	pw_n <- density_h2o(t_cond, patm)
+	# daily condensation (mm)
+	cond<-cond_LE*(1/lv_n)*(1/pw_n)*1000.0
 	
 	# get net radiation J/m2
 	if(!is.null(fluxnet_data$NETRAD)){
@@ -521,8 +597,8 @@ readFluxdata<-function(filename,elev){
 	
 	rm(fluxnet_data)
 	gc()
-	result<-merge.xts(aet,pet,eeq,TA_F,SW_IN_mean,P,sm,NETRAD/1e6,vpd,co2,ppfd,gpp,snowmelt,alb_day)
-	names(result)<-c("aet","pet","eeq","tc","SW_in","pn","sm","netr","VPD","CO2","PPFD","GPP",'snowmelt','alb')
+	result<-merge.xts(aet,pet,eeq,TA_F,SW_IN_mean,P,sm,NETRAD/1e6,vpd,vpd_sa,co2,ppfd,gpp,snowmelt,alb_day,cond)
+	names(result)<-c("aet","pet","eeq","tc","SW_in","pn","sm","netr","VPD",'VPD_SA',"CO2","PPFD","GPP",'snowmelt','alb','cond')
 	
 	return(result)
 	

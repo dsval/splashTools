@@ -4,17 +4,23 @@
 \alias{getSoilGrid}
 \title{getSoilGrid}
 \usage{
-getSoilGrid(bbox, ouputdir = getwd())
+getSoilGrid(bbox, global_depth, ouputdir = getwd())
 }
 \arguments{
 \item{bbox, }{any type of spatial object}
 
+\item{global_depth, }{global raster of depth to the R horizon, unfortunately not available anymore in the new update of soilgrids, so, download it separately fromhttps://files.isric.org/soilgrids/former/2017-03-10/data/BDRICM_M_250m_ll.tif}
+
 \item{ouputdir, }{directory where to save the files}
 }
+\value{
+A RasterBrick object with the layers organized as sand(perc),clay(perc),organic matter(perc),coarse-fragments-fraction(perc), bulk density(g cm-3) and depth (m)
+}
 \description{
-Downloads soil data (sand, clay, OM, gravel, bulk density and depth) from soilgrids.org in raster format, calculates the weigthed mean according layer depths
+Downloads soil data (sand, clay, OM, gravel, bulk density and depth) from soilgrids.org in raster format, calculates the weigthed average according to the layer depths
 }
 \examples{
-splash.grid()
+getSoilGrid()
 }
-\keyword{splashTools}
+\keyword{Soilgrids,}
+\keyword{raster}

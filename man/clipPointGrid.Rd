@@ -7,12 +7,19 @@
 clipPointGrid(raster, sp, value)
 }
 \arguments{
-\item{raster, sp, value}{}
+\item{raster, }{Raster layer}
+
+\item{sp, }{SpatialPoints or SpatialPointsDataFrame object}
+
+\item{value, }{numeric}
+}
+\value{
+A subset of sp
 }
 \description{
 function to clip points(sp) in overlapped ares where raster == value
 }
 \examples{
-splash.grid()
+clipPointGrid()
 }
 \keyword{splash}

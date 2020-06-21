@@ -2,17 +2,27 @@
 % Please edit documentation in R/cloud2Rad.R
 \name{cloud2Rad}
 \alias{cloud2Rad}
-\title{cloud2Rad}
+\title{cloud2Rad
+Compute mean solar radiation (W/m2 ) by using the classic AP formula and the elevation effect on the atmosphere's transmittance, as described by Davis et al., (2017)}
 \usage{
 cloud2Rad(clds, elev_lowres, ouputdir = getwd(), inmem = FALSE, ...)
 }
 \arguments{
-\item{elev_hres, rad_lowres, ouputdir}{}
+\item{clds, }{cloudiness, (fraction), Raster* object with z time dimension}
+
+\item{elev_lowres, }{elevation (masl), Raster layer}
+
+\item{ouputdir, }{directory where to save the files}
+}
+\value{
+A RasterBrick object with the mean solar radiation (W/m2 ) with the same dimensions as clds
 }
 \description{
-Dowsncale solar radiation grid data by getting the transmitance from extraterrestrial radiation, and applying slope corrections, returns w/m2
+cloud2Rad
+Compute mean solar radiation (W/m2 ) by using the classic AP formula and the elevation effect on the atmosphere's transmittance, as described by Davis et al., (2017)
 }
 \examples{
-splash.grid()
+*optional run beginCluster() first, for parallel computing
+cloud2Rad()
 }
 \keyword{splash}
