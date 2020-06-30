@@ -105,8 +105,7 @@ aggRaster<-function(x,func='mean',inmem=FALSE,outdir=getwd(), ... ){
 			# } 
 			
 			if(!inmem){
-				out<-writeStart(out,filename=paste0(outdir,"/",y[1],"_",y[length(y)],".",varnam,".","nc"),format="CDF",overwrite=TRUE,varname=varnam, varunit=varunit,
-					longname=longname, xname="lon", yname="lat", zname="time", zunit=paste("months","since",paste0(y[1]-1,"-",12)))
+				out<-writeStart(out,filename=paste0(outdir,"/",y[1],"_",y[length(y)],".",deparse(substitute(x)),".","nc"),format="CDF",overwrite=TRUE, ..., xname="lon", yname="lat", zname="time")
 				
 				
 			}else {
