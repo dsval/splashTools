@@ -5,7 +5,7 @@
 #' @param  func, character, 'mean' or ,'sum'
 #' @param  inmem, logical, if FALSE the result will be stored as a netCDF file
 #' @param  outdir, character, directory path where the output will be stored if inmem=FALSE
-#' @param  ... additional arguments as for writeRaster, must include varnam,longname, an varunit
+#' @param  ... additional arguments as for writeRaster
 #' @return  Rasterbrick object with monthly z time dimension
 #' @import raster  
 #' @keywords aggregation, monthly
@@ -14,7 +14,7 @@
 #' *optional run beginCluster() first, for parallel computing
 #' aggRaster()	
 	
-aggRaster<-function(x,func='mean',inmem=FALSE,outdir=getwd(), ... ){
+aggRaster<-function(x,func='mean',inmem=FALSE,outdir=getwd(),varnam='sm', ... ){
 	###########################################################################
 	# 00. Check if parallel computation is required by the user and if the dimensions of the raster objects match
 	###########################################################################
@@ -35,9 +35,11 @@ aggRaster<-function(x,func='mean',inmem=FALSE,outdir=getwd(), ... ){
 			y<-as.numeric(unique(format(getZ(x),'%Y')))
 			ind.months<-seq(getZ(x)[1],getZ(x)[length(getZ(x))], by="month")					
 			nm <-length(ind.months)
-			# actual soil moisture
-			out<-brick(nrows=nrow(x), ncols=ncol(x), crs=crs(x), nl=nm)
-			extent(x)<-extent(x)
+			# mold
+			
+			out<-brick(x[[1]], values=FALSE, nl=nm, filename=paste0(outdir,"/",y[1],"_",y[length(y)],".",varnam,".","nc"),format="CDF",overwrite=TRUE,
+			varnam= varnam,..., xname="lon", yname="lat", zname="time") 
+			#extent(x)<-extent(x)
 			out<-setZ(out,ind.months)
 			indmonth<-format(getZ(x),'%Y-%m')
 			setwd(outdir)
@@ -47,7 +49,7 @@ aggRaster<-function(x,func='mean',inmem=FALSE,outdir=getwd(), ... ){
 			cl <- getCluster()
 			#on.exit( returnCluster() )
 			nodes <- length(cl)
-			bs <- blockSize(x, minblocks=nodes*10)
+			bs <- blockSize(x, minblocks=nodes)
 			parallel:::clusterExport(cl, c('x','func','indmonth','bs'),envir=environment()) 
 			pb <- pbCreate(bs$n)
 			pb <- txtProgressBar(min=1,max = bs$n, style = 1)
@@ -105,7 +107,8 @@ aggRaster<-function(x,func='mean',inmem=FALSE,outdir=getwd(), ... ){
 			# } 
 			
 			if(!inmem){
-				out<-writeStart(out,filename=paste0(outdir,"/",y[1],"_",y[length(y)],".",deparse(substitute(x)),".","nc"),format="CDF",overwrite=TRUE, ..., xname="lon", yname="lat", zname="time")
+				out<-writeStart(out,filename=paste0(outdir,"/",y[1],"_",y[length(y)],".",varnam,".","nc"),format="CDF",overwrite=TRUE, varnam= varnam,...,
+				xname="lon", yname="lat", zname="time")
 				
 				
 			}else {
