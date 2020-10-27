@@ -26,11 +26,11 @@
 #' }
 #' @export
 #' @examples readFluxdata(filename,elev)
-readFluxdata<-function(filename,elev){
+readFluxdata<-function(filename,lat=NULL,lon=NULL,elev=NULL){
 	# testing
-	# filename<-filenames.fluxnet[3]
-	#filename<-filenames.europaflux[70,1]
-	# filename.FLX.zip<-filenames.fluxnet[8]
+	# filename<-filenames.ameriflux[2];lat=avail.stations$lat[38];lon=avail.stations$lon[38]
+	#filename<-filenames.fluxnet[1]
+	# filename<-"X:/home/WORK/data_input/ameriflux_L4/AMF_L4_NT_US-CPk_HH_2009-2013.csv"
 	# elev<-as.numeric(as.character(FLUXNET_2015@data$elv[22]))
 	# elev<-300
 	
@@ -39,12 +39,12 @@ readFluxdata<-function(filename,elev){
 	# 01. Read the data, assign time info, get the time interval, define the time interval in seconds t_conv_f
 	###############################################################################################	
 	# fluxnet_data<-read.table(filename,  header=T, quote="\"", sep=",",na.strings = -9999)
-	fluxnet_data<-data.table::fread(filename,  header=T, quote="\"", sep=",",na.strings = "-9999",integer64="character")
+	fluxnet_data<-data.table::fread(filename,  header=T, quote="\"", sep=",",na.strings = c("NA",'-9999'),colClasses='numeric',integer64="character")
 	# fluxnet_data[fluxnet_data==-9999]<-NA
 	ind<-strptime(fluxnet_data$TIMESTAMP_START,format="%Y%m%d%H%M",tz="GMT")
 	time.freq<-abs(as.numeric(ind[1]-ind[2], units = "hours"))
 	t_conv_f<-3600*time.freq
-	
+	site<-do.call(rbind,strsplit(basename(filename),'_'))[,2]
 	###############################################################################################
 	# 02.define the constants
 	###############################################################################################
@@ -284,6 +284,7 @@ readFluxdata<-function(filename,elev){
 	TA_F<-apply.daily(TA_F,mean,na.rm=TRUE)
 	
 	# get daily vpd Pa
+		
 	if(!is.null(fluxnet_data$VPD_F)){
 		vpd<-xts(fluxnet_data$VPD_F*100,ind)
 	}else{
@@ -304,6 +305,11 @@ readFluxdata<-function(filename,elev){
 		}
 		
 	}
+	
+	
+	
+	
+	
 	vpd[SW_IN_F<=0]<-NA
 	vpd<-apply.daily(vpd,mean,na.rm=TRUE)
 	###############################################################################################
@@ -378,6 +384,7 @@ readFluxdata<-function(filename,elev){
 	if(!is.null(fluxnet_data$PPFD_IN)){
 		ppfd<-xts(fluxnet_data$PPFD_IN*t_conv_f*1e-6,ind)
 		ppfd<-apply.daily(ppfd,sum,na.rm=TRUE)
+		ppfd[ppfd==0]<-NA
 	}else{
 		ppfd<-(1e-6)*(kfFEC*(1 - kalb_vis)*(SW_IN_mean*86400))
 		
@@ -389,6 +396,8 @@ readFluxdata<-function(filename,elev){
 	}else{
 		if(!is.null(fluxnet_data$GPP)){
 			gpp<-xts(fluxnet_data$GPP*t_conv_f*1e-6,ind)
+		}else if (is.null(fluxnet_data$GPP)){
+			gpp<-xts(fluxnet_data$GPP_st_ANN*t_conv_f*1e-6,ind)
 		}else{
 			gpp<-xts(rep(NA,length(ind)),ind)
 		}
@@ -403,10 +412,16 @@ readFluxdata<-function(filename,elev){
 	# Atmospheric pressure, Pa
 	if(!is.null(fluxnet_data$PA)){
 		patm <-1000*fluxnet_data$PA
+		if(!is.null(elev)){
+			patm[is.na(patm)]<-elv2pres(elev)
+		}
+		
 		patm<-apply.daily(xts(patm,ind),mean,na.rm=TRUE)
-		patm[is.na(patm)]<-elv2pres(elev)
-	}else{
+		
+	}else if (is.null(fluxnet_data$PA) & !is.null(elev)){
 		patm <- elv2pres(elev)
+	}else{
+		patm<-xts(rep(NA,length(gpp)),time(gpp))
 	}
 	# 3.1. Calculate water-to-energy conversion (econ) daytime, m^3/J
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -430,7 +445,10 @@ readFluxdata<-function(filename,elev){
 		LE_QF<-fluxnet_data$LE_SSITC_TEST
 	}else if(is.null(fluxnet_data$LE_SSITC_TEST)& !is.null(fluxnet_data$LE_F_MDS_QC)){
 		LE_QF<-fluxnet_data$LE_F_MDS_QC
+	}else if(is.null(fluxnet_data$LE_F_MDS_QC)){
+		LE_QF<-fluxnet_data$LE_fqc
 	}
+	
 	if(!is.null(fluxnet_data$LE_CORR)){
 		LE<-xts(fluxnet_data$LE_CORR,ind)
 	}else{
