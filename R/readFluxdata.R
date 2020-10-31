@@ -26,13 +26,13 @@
 #' }
 #' @export
 #' @examples readFluxdata(filename,elev)
-readFluxdata<-function(filename,lat=NULL,lon=NULL,elev=NULL){
+readFluxdata<-function(filename,elev=NULL,sensors_d=NULL){
 	# testing
 	# filename<-filenames.ameriflux[2];lat=avail.stations$lat[38];lon=avail.stations$lon[38]
-	#filename<-filenames.fluxnet[1]
+	#filename<-filenames.flux.mts[63,1]
 	# filename<-"X:/home/WORK/data_input/ameriflux_L4/AMF_L4_NT_US-CPk_HH_2009-2013.csv"
 	# elev<-as.numeric(as.character(FLUXNET_2015@data$elv[22]))
-	# elev<-300
+	# elev<-918
 	
 	# fluxnet_data<-read.table(unz(filename.FLX.zip, filename),  header=T, quote="\"", sep=",",na.strings = -9999)
 	###############################################################################################
