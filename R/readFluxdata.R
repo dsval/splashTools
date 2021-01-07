@@ -548,7 +548,7 @@ readFluxdata<-function(filename,elev=NULL,sensors_d=NULL, SWC='v/v'){
 		sm<-fluxnet_data[,..nameswc]
 		if(SWC=='v/v'){
 			if(length(nameswc)>1){
-				if(is.null(sensors_d)|is.na(sensors_d)){
+				if(is.null(sensors_d)|is.na(sensors_d) | (length(sensors_d)!=length(nameswc))){
 					sm<-rowMeans(sm,na.rm=F)
 				}else{
 					upper_bound=-1*sensors_d
