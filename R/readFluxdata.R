@@ -624,7 +624,7 @@ readFluxdata<-function(filename,elev=NULL,sensors_d=NULL, SWC='v/v'){
 	rm(fluxnet_data)
 	gc()
 	result<-merge.xts(aet,pet,eeq,TA_F,SW_IN_mean,P,sm,NETRAD/1e6,vpd,vpd_sa,co2,ppfd,gpp,snowmelt,alb_day,cond,Tsurf)
-	time(result)<-as.Date(time(result))
+	stats::time(result)<-as.Date(stats::time(result))
 	names(result)<-c("aet","pet","eeq","tc","SW_in","pn","sm","netr","VPD",'VPD_SA',"CO2","PPFD","GPP",'snowmelt','alb','cond','Tsurf')
 	
 	return(result)
