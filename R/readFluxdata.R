@@ -26,9 +26,9 @@
 #' }
 #' @export
 #' @examples readFluxdata(filename,elev)
-readFluxdata<-function(filename,elev=NULL,sensors_d=NULL){
+readFluxdata<-function(filename,elev=NULL,sensors_d=NULL, SWC='v/v'){
 	# testing
-	# filename<-filenames.ameriflux[2];lat=avail.stations$lat[38];lon=avail.stations$lon[38]
+	# filename=filenames.fluxnet.subset[36];elev=fluxnet_geo$elev_30m[35]; sensors_d=sensor_depths$`FR-LBr`; SWC='v/v'
 	#filename<-filenames.flux.mts[63,1]
 	# filename<-"X:/home/WORK/data_input/ameriflux_L4/AMF_L4_NT_US-CPk_HH_2009-2013.csv"
 	# elev<-as.numeric(as.character(FLUXNET_2015@data$elv[22]))
@@ -537,44 +537,52 @@ readFluxdata<-function(filename,elev=NULL,sensors_d=NULL){
 	pet<-eeq*(1+0.26)
 	# !!!!!!!!Error not energy balance clossure, aet>pet, not posible
 	pet[aet>pet]<-aet[aet>pet]
-	# aet<-xts(aet,ind)
-	# aet<-apply.daily(aet,sum)
-	
-	
-	# et_ind<-aet/pet
-	# get soil moisture (mm) from volumetric measurements depth 0.5 m each
-	if(!is.null(fluxnet_data$SWC_F_MDS_1)){
-		sm_1<-fluxnet_data$SWC_F_MDS_1
-	}else{
-		if(!is.null(fluxnet_data$SWC_1)){
-			sm_1<-fluxnet_data$SWC_1
-		}else{
-			sm_1<-rep(NA,length(ind))
+	#################################################################################
+	######### get soil moisture ######################################################
+	#################################################################################
+	if(length(grep("^SWC", names(fluxnet_data), value = TRUE))!=0){
+		nameswc<-grep("^SWC", names(fluxnet_data), value = TRUE)
+		nameswc_qc<-grep("^SWC.*.QC", names(fluxnet_data), value = TRUE)
+		nameswc<-nameswc[!(nameswc %in% nameswc_qc)]
+		
+		sm<-fluxnet_data[,..nameswc]
+		if(SWC=='v/v'){
+			if(length(nameswc)>1){
+				if(is.null(sensors_d)){
+					sm<-rowMeans(sm,na.rm=F)
+				}else{
+					upper_bound=-1*sensors_d
+					lowerbound<-c(0,upper_bound[1:(length(upper_bound)-1)])
+					depth_inter<-upper_bound-lowerbound
+					weight<-depth_inter/sum(depth_inter)
+					sm<- apply(sm, 1, weighted.mean, weight)
+				}
+							
+			}
+		}else if (SWC=='mm'){
+			if(is.null(sensors_d)){
+				warning('Impossible to calculate SWC in mm, sensor depth(s) not provided, returning NAs')
+				sm<-rep(NA,length(ind))
+			}else{
+				#m3/m3 * m *1000 = litre/m2,(sm in %, so factor=10)
+				upper_bound=-1*sensors_d*10
+				lowerbound<-c(0,upper_bound[1:(length(upper_bound)-1)])
+				depth_inter<-upper_bound-lowerbound
+				sm=t(t(sm) * depth_inter)
+				sm<-rowSums(sm,na.rm=F)
+			}
+			
+			
 		}
-	}
-	if(!is.null(fluxnet_data$SWC_F_MDS_2)){
-		sm_2<-fluxnet_data$SWC_F_MDS_2
+		
+				
 	}else{
-		if(!is.null(fluxnet_data$SWC_2)){
-			sm_2<-fluxnet_data$SWC_2
-		}else{
-			sm_2<-rep(NA,length(ind))
-		}
+		sm<-rep(NA,length(ind))
 	}
-	if(!is.null(fluxnet_data$SWC_F_MDS_3)){
-		sm_3<-fluxnet_data$SWC_F_MDS_3
-	}else{
-		if(!is.null(fluxnet_data$SWC_3)){
-			sm_3<-fluxnet_data$SWC_3
-		}else{
-			sm_3<-rep(NA,length(ind))
-		}
-	}
-	sm<-cbind(sm_1,sm_2,sm_3)
-	# assuming 0.5 meter depth
-	sm<-rowMeans(sm,na.rm=TRUE)
+
 	sm<-xts(sm,ind)
 	sm<-apply.daily(sm,median,na.rm=TRUE)
+	
 	
 
 	
@@ -615,8 +623,9 @@ readFluxdata<-function(filename,elev=NULL,sensors_d=NULL){
 	
 	rm(fluxnet_data)
 	gc()
-	result<-merge.xts(aet,pet,eeq,TA_F,SW_IN_mean,P,sm,NETRAD/1e6,vpd,vpd_sa,co2,ppfd,gpp,snowmelt,alb_day,cond)
-	names(result)<-c("aet","pet","eeq","tc","SW_in","pn","sm","netr","VPD",'VPD_SA',"CO2","PPFD","GPP",'snowmelt','alb','cond')
+	result<-merge.xts(aet,pet,eeq,TA_F,SW_IN_mean,P,sm,NETRAD/1e6,vpd,vpd_sa,co2,ppfd,gpp,snowmelt,alb_day,cond,Tsurf)
+	time(result)<-as.Date(time(result))
+	names(result)<-c("aet","pet","eeq","tc","SW_in","pn","sm","netr","VPD",'VPD_SA',"CO2","PPFD","GPP",'snowmelt','alb','cond','Tsurf')
 	
 	return(result)
 	
