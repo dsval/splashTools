@@ -313,10 +313,15 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 		# solar$tau_o <- tau_o
 		# solar$tau <- tau
 		# to avoid NA's at polar nigths, tau only defined by elevation, assume clear sky
-		tau<-ifelse(rad_in>ra_d | ra_d <= 0,(kc + kd)*(1 + (2.67e-5)*elev),rad_in/ra_d)
-		sf<-((tau/(1 + (2.67e-5)*elev))-kc)/kd
-		# kc and kd are not working for the whole world some pixels give errors, normalize sf to {0,1}
-		sf<-(sf-min(sf,na.rm = T))/(max(sf,na.rm = T)-min(sf,na.rm = T))
+		tau_o = (kc + kd)*(1 + (2.67e-5)*elev)
+		
+		tau<-ifelse(rad_in>ra_d | ra_d <= 0,tau_o,rad_in/ra_d)
+		#AP sf
+		#sf<-((tau/(1 + (2.67e-5)*elev))-kc)/kd
+		#general global AP radiation model Suehrcke, et al., 2013 
+		#sf = pow(((tau-tau_o*0.1898)/(tau_o*(1-0.1898))),(1/0.7410));
+		sf= ((tau-tau_o*0.1898)/(tau_o*(1-0.1898)))^(1/0.7410)
+		sf = ifelse(is.na(sf),0,ifelse(sf>1,1,sf))
 		return(sf)
 		
 	}
