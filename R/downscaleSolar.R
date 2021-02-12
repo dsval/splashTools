@@ -553,7 +553,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 		# # kc and kd are not working for the whole world some pixels give these errors
 		# sf[sf>1]<-1.0
 		# sf[sf<0]<-0.0
-		return(rad_in)
+		return(as.integer(rad_in))
 		
 	}
 	###############################################################################################
@@ -648,13 +648,17 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	###############################################################################################
 	cat('projecting sf')
 	#sf_hres<-projectRaster(sf,elev_hres,filename="sf_hres.grd")
-	sf_hres<-crop(sf,elev_hres)
-	sf_hres<-projectRaster(sf_hres,elev_hres,filename="sf_hres.grd",overwrite=TRUE)
+	# sf_hres<-crop(sf,elev_hres)
+	# sf_hres<-projectRaster(sf_hres,elev_hres,filename="sf_hres.grd",overwrite=TRUE)
+	#sf_hres=gdalUtils::gdal_translate(src_dataset='sf_lr.grd',dst_dataset='sf_hres.grd',of='RRASTER', tr=res(elev_hres),output_Raster=TRUE,verbose=TRUE)
+	
 	# fx<-nrow(elev_hres)/nrow(sf_hres)
 	# fy<-ncol(elev_hres)/ncol(sf_hres)
 	# sf_hres<-disaggregate(sf_hres,c(fy,fx),filename="sf_hres.grd",overwrite=TRUE)
 	# gc()
-	
+	system(paste('gdal_translate','-of netCDF','-tr',res(elev_hres)[1],res(elev_hres)[2],'-a_srs EPSG:4326','sf_lr.grd', 'sf_hres.nc'))
+	sf_hres=brick('sf_hres.nc')
+
 	###############################################################################################
 	# 10. set the clusters for rad parallel computing
 	###############################################################################################	
@@ -689,7 +693,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	###############################################################################################
 	
 	if(!inmem){
-		out<-writeStart(out,filename=paste0(ouputdir,"/",y[1],"_",y[length(y)],"_",'sw_in',".","nc"),format="CDF",overwrite=TRUE,varname="sw_in", varunit="W/m2",longname='shortwave radiation', xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(y[1]-1,"-",12)), ...)
+		out<-writeStart(out,filename=paste0(ouputdir,"/",y[1],"_",y[length(y)],"_",'sw_in',".","nc"),format="CDF",datatype ='INT2S',overwrite=TRUE,varname="sw_in", varunit="W/m2",longname='shortwave radiation', xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(y[1]-1,"-",12)), ...)
 		
 		
 	}else {
