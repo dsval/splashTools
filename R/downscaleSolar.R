@@ -104,7 +104,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	# 02. Define functions
 	###########################################################################
 	calc_sf<-function(sw_in,lat,elev,y,doy){
-		
+		#sw_in=50;lat=70;elev=500;y=1982;doy=15
 		###########################################################################
 		# 01. Define constants inside functions to avoid exporting one by one to the cluster
 		###########################################################################
@@ -289,7 +289,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 		# 06. Calculate the sunset hour angle (hs), degrees
 		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# Note: u/v equals tan(delta) * tan(lat)
-		hs <- acos(-1.0*ru/rv)
+		hs <- acos(-1.0*(ru/rv))
 		hs <- hs / pir
 		hs[ru/rv >= 1.0]<-180 # Polar day (no sunset)
 		hs[ru/rv <= -1.0]<-0 # Polar night (no sunrise)
@@ -312,7 +312,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 		# tau <- tau_o*(1 + (2.67e-5)*elv)
 		# solar$tau_o <- tau_o
 		# solar$tau <- tau
-		# to avoid NA's at polar nigths, tau only defined by elevation, assume clear sky
+		# to avoid NA's at polar nights, tau only defined by elevation, assume clear sky
 		tau_o = (kc + kd)*(1 + (2.67e-5)*elev)
 		
 		tau<-ifelse(rad_in>ra_d | ra_d <= 0,tau_o,rad_in/ra_d)
@@ -658,7 +658,9 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	# gc()
 	# system(paste('gdal_translate','-of netCDF','-tr',res(elev_hres)[1],res(elev_hres)[2],'-a_srs EPSG:4326','sf_lr.grd', 'sf_hres.nc'))
 	# sf_hres=brick('sf_hres.nc')
-	system(paste('gdal_translate','-of RRASTER','-tr',res(elev_hres)[1],res(elev_hres)[2],'-a_srs EPSG:4326','sf_lr.grd', 'sf_hres.grd'))
+	#system(paste('gdal_translate','-of RRASTER','-tr',res(elev_hres)[1],res(elev_hres)[2],'-a_srs EPSG:4326','sf_lr.grd', 'sf_hres.grd'))
+	
+	system(paste('gdalwarp','-of RRASTER',paste0('-multi -wo NUM_THREADS=',nodes),'-te',extent(elev_hres)[1],extent(elev_hres)[3],extent(elev_hres)[2],extent(elev_hres)[4],'-te_srs EPSG:4326','-tr',res(elev_hres)[1],res(elev_hres)[2],'-t_srs EPSG:4326','sf_lr.grd', 'sf_hres.grd'))
 	sf_hres=brick('sf_hres.grd')
 	###############################################################################################
 	# 10. set the clusters for rad parallel computing
