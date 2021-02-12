@@ -21,7 +21,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	if(class(clcheck)=="try-error"){
 		# If no cluster is initialized, assume only one core will do the calculations, beginCluster(1) saved me the time of coding serial versions of the functions
 		beginCluster(1,'SOCK')
-		message('Only using one core, use first beginCluster() if you want to run splash in parallel!!')
+		message('Only using one core, use first beginCluster() if you need to do the calculations in parallel!!')
 		
 	}
 	rasterOptions(tolerance = 0.5)
@@ -566,7 +566,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	bs <- blockSize(rad_lowres, minblocks=nodes)
 	parallel:::clusterExport(cl, c('y','calc_sf','doy','bs','rad_lowres','elev_lowres','lat_lr'),envir=environment()) 
 	pb <- pbCreate(bs$n)
-	pb <- txtProgressBar(min=1,max = bs$n, style = 1)
+	pb <- txtProgressBar(min=1,max = max(bs$n,2), style = 1)
 	###############################################################################################
 	# 04. create the functions to send to the workers, split the data in chunks
 	###############################################################################################	
@@ -656,9 +656,10 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	# fy<-ncol(elev_hres)/ncol(sf_hres)
 	# sf_hres<-disaggregate(sf_hres,c(fy,fx),filename="sf_hres.grd",overwrite=TRUE)
 	# gc()
-	system(paste('gdal_translate','-of netCDF','-tr',res(elev_hres)[1],res(elev_hres)[2],'-a_srs EPSG:4326','sf_lr.grd', 'sf_hres.nc'))
-	sf_hres=brick('sf_hres.nc')
-
+	# system(paste('gdal_translate','-of netCDF','-tr',res(elev_hres)[1],res(elev_hres)[2],'-a_srs EPSG:4326','sf_lr.grd', 'sf_hres.nc'))
+	# sf_hres=brick('sf_hres.nc')
+	system(paste('gdal_translate','-of RRASTER','-tr',res(elev_hres)[1],res(elev_hres)[2],'-a_srs EPSG:4326','sf_lr.grd', 'sf_hres.grd'))
+	sf_hres=brick('sf_hres.grd')
 	###############################################################################################
 	# 10. set the clusters for rad parallel computing
 	###############################################################################################	
@@ -667,7 +668,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	message('computing sw with ', nodes, ' nodes')
 	parallel:::clusterExport(cl, c('y','calc_sw_in','doy','bs','sf_hres','elev_hres','lat_hr','terraines'),envir=environment()) 
 	pb <- pbCreate(bs$n)
-	pb <- txtProgressBar(min=1,max = bs$n, style = 1)
+	pb <- txtProgressBar(min=1,max = max(bs$n,2), style = 1)
 	###############################################################################################
 	# 11. create the functions to send to the workers, split the data in chunks
 	###############################################################################################	
