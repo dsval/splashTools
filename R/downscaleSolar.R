@@ -313,15 +313,15 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 		# solar$tau_o <- tau_o
 		# solar$tau <- tau
 		# to avoid NA's at polar nights, tau only defined by elevation, assume clear sky
-		tau_o = (kc + kd)*(1 + (2.67e-5)*elev)
+		tau_o <- (kc + kd)*(1 + (2.67e-5)*elev)
 		
 		tau<-ifelse(rad_in>ra_d | ra_d <= 0,tau_o,rad_in/ra_d)
 		#AP sf
 		#sf<-((tau/(1 + (2.67e-5)*elev))-kc)/kd
 		#general global AP radiation model Suehrcke, et al., 2013 
 		#sf = pow(((tau-tau_o*0.1898)/(tau_o*(1-0.1898))),(1/0.7410));
-		sf= ((tau-tau_o*0.1898)/(tau_o*(1-0.1898)))^(1/0.7410)
-		sf = ifelse(is.na(sf),0,ifelse(sf>1,1,sf))
+		sf <- ((tau-tau_o*0.1898)/(tau_o*(1-0.1898)))^(1/0.7410)
+		sf <- ifelse(is.na(sf),0,ifelse(sf>1,1,sf))
 		return(sf)
 		
 	}
@@ -531,10 +531,15 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 		# 08. Calculate transmittivity (tau), unitless, and sunshine fraction
 		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# ref:  Eq. 11, Linacre (1968); Eq. 2, Allen (1996)
-		tau_o <- (kc + kd*sf)
-		tau <- tau_o*(1 + (2.67e-5)*elev)
-		solar$tau_o <- tau_o
-		solar$tau <- tau
+		# tau_o <- (kc + kd*sf)
+		# tau <- tau_o*(1 + (2.67e-5)*elev)
+		# solar$tau_o <- tau_o
+		# solar$tau <- tau
+		
+		tau_o = (kc + kd)*(1 + (2.67e-5)*elev)
+		#general global AP radiation model Suehrcke, et al., 2013 
+		
+		tau<-tau_o*(0.1898+(1-0.1898)*sf^0.7410)
 		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# 09. Calculate daily incoming radiation W/m^2
 		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -661,7 +666,10 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	#system(paste('gdal_translate','-of RRASTER','-tr',res(elev_hres)[1],res(elev_hres)[2],'-a_srs EPSG:4326','sf_lr.grd', 'sf_hres.grd'))
 	
 	system(paste('gdalwarp','-of RRASTER',paste0('-multi -wo NUM_THREADS=',nodes),'-te',extent(elev_hres)[1],extent(elev_hres)[3],extent(elev_hres)[2],extent(elev_hres)[4],'-te_srs EPSG:4326','-tr',res(elev_hres)[1],res(elev_hres)[2],'-t_srs EPSG:4326','sf_lr.grd', 'sf_hres.grd'))
+
 	sf_hres=brick('sf_hres.grd')
+	
+	
 	###############################################################################################
 	# 10. set the clusters for rad parallel computing
 	###############################################################################################	

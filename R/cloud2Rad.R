@@ -20,7 +20,7 @@ cloud2Rad<-function(clds,elev_lowres,ouputdir=getwd(),inmem=FALSE, ...){
 	if(class(clcheck)=="try-error"){
 		# If no cluster is initialized, assume only one core will do the calculations, beginCluster(1) saved me the time of coding serial versions of the functions
 		beginCluster(1,'SOCK')
-		message('Only using one core, use first beginCluster() if you want to run splash in parallel!!')
+		message('Only using one core, use first beginCluster(ncpus) if you need to do the calculations in parallel!!')
 		
 	}
 	###############################################################################################
@@ -271,28 +271,21 @@ cloud2Rad<-function(clds,elev_lowres,ouputdir=getwd(),inmem=FALSE, ...){
 		# 08. Calculate transmittivity (tau), unitless, and sunshine fraction
 		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# ref:  Eq. 11, Linacre (1968); Eq. 2, Allen (1996)
-		tau_o <- (kc + kd*sf)
-		tau <- tau_o*(1 + (2.67e-5)*elev)
-		solar$tau_o <- tau_o
-		solar$tau <- tau
+		# tau_o <- (kc + kd*sf)
+		# tau <- tau_o*(1 + (2.67e-5)*elev)
+		# solar$tau_o <- tau_o
+		# solar$tau <- tau
+		# Eq. 2, Allen (1996)
+		tau_o = (kc + kd)*(1 + (2.67e-5)*elev)
+		#general global AP radiation model Suehrcke, et al., 2013 
+		
+		tau<-tau_o*(0.1898+(1-0.1898)*sf^0.7410)
+		
 		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# 09. Calculate daily incoming radiation W/m^2
 		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		rad_in<-ra_d*tau/kSecInDay
-		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		# 08. Calculate transmittivity (tau), unitless, and sunshine fraction
-		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		# ref:  Eq. 11, Linacre (1968); Eq. 2, Allen (1996)
-		# tau_o <- (kc + kd*sf)
-		# tau <- tau_o*(1 + (2.67e-5)*elv)
-		# solar$tau_o <- tau_o
-		# solar$tau <- tau
-		# to avoid NA's at polar nigths, tau only defined by elevation, assume clear sky
-		# tau<-ifelse(rad_in>ra_d | ra_d <= 0,(kc + kd)*(1 + (2.67e-5)*elev),rad_in/ra_d)
-		# sf<-((tau/(1 + (2.67e-5)*elev))-kc)/kd
-		# # kc and kd are not working for the whole world some pixels give these errors
-		# sf[sf>1]<-1.0
-		# sf[sf<0]<-0.0
+		
 		return(rad_in)
 		
 	}
@@ -310,7 +303,7 @@ cloud2Rad<-function(clds,elev_lowres,ouputdir=getwd(),inmem=FALSE, ...){
 	snow:::clusterExport(cl, c('y','calc_sw_in','doy','bs','sf','elev_lowres','lat_lr','terraines'),envir=environment()) 
 	cl
 	pb <- pbCreate(bs$n)
-	pb <- txtProgressBar(min=1,max = bs$n, style = 1)
+	pb <- txtProgressBar(min=1,max = max(bs$n,2), style = 1)
 	###############################################################################################
 	# 11. create the functions to send to the workers, split the data in chunks
 	###############################################################################################	
