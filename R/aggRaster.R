@@ -18,7 +18,7 @@ aggRaster<-function(x,func='mean',inmem=FALSE,outdir=getwd(),varnam='sm', ... ){
 	###########################################################################
 	# 00. Check if parallel computation is required by the user and if the dimensions of the raster objects match
 	###########################################################################
-	on.exit(endCluster())
+	on.exit(traceback())
 	clcheck<-try(getCluster(), silent=TRUE)
 	if(class(clcheck)=="try-error"){
 		# If no cluster is initialized, assume only one core will do the calculations, beginCluster(1) saved me the time of coding serial versions of the functions
@@ -124,7 +124,7 @@ aggRaster<-function(x,func='mean',inmem=FALSE,outdir=getwd(),varnam='sm', ... ){
 				d <- parallel:::recvOneData(cl)
 				# error?
 				if (! d$value$success) {
-					stop('error!! check the data...')
+					stop('cluster error:',"\n",d$value$value)
 				}
 				# which block is this?
 				b <- d$value$tag
