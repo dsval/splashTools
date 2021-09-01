@@ -11,7 +11,7 @@
 #' @examples
 #' # *optional run beginCluster() first, for parallel computing
 #' downscaleSolar()
-downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem=FALSE, ...){
+downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),tmpdir=dirname(rasterTmpFile()),inmem=FALSE, ...){
 	
 	###########################################################################
 	# 00. Check if parallel computation is required by the user and if the dimensions of the raster objects match
@@ -24,6 +24,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 		message('Only using one core, use first beginCluster() if you need to do the calculations in parallel!!')
 		
 	}
+	type=class(clcheck)[1]
 	rasterOptions(tolerance = 0.5)
 	compareRaster(rad_lowres, elev_lowres,extent=TRUE, crs=TRUE, res=TRUE, orig=FALSE,rotation=FALSE, values=FALSE, stopiffalse=FALSE, showwarning=TRUE)	
 	
@@ -31,7 +32,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	###############################################################################################
 	# 00. create array for results, get time info
 	###############################################################################################
-	tmpdir<-dirname(rasterTmpFile())
+	#tmpdir<-dirname(rasterTmpFile())
 	setwd(tmpdir)
 	y<-as.numeric(format(getZ(rad_lowres),'%Y'))
 	doy<-as.numeric(format(getZ(rad_lowres),'%j'))
@@ -83,6 +84,8 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	# 1.3  calculate slope and aspect
 	rasterOptions(maxmemory=1e9, timer=TRUE, tmptime = 24, chunksize = 1e9,progress='text', overwrite=TRUE,tolerance=0.5,todisk=FALSE)
 	terraines<-terrain(elev_hres, opt=c('slope', 'aspect'), unit='degrees')
+	#### correct rioentation slopes, from R north is 0deg, in Allen, 2006 doi:10.1016/j.agrformet.2006.05.012 0deg is south!!!
+	terraines[[2]]<-calc(terraines[[2]],function(x){x-180})
 	# 1.3  fillnas slope and aspect
 	fillna<-function(ind,x){
 		focal(x[[ind]], w = matrix(1,3,3), fun = function(x, i=5) {
@@ -544,6 +547,8 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 		# 09. Calculate daily incoming radiation W/m^2
 		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		rad_in<-ra_d*tau/kSecInDay
+		##!!!! Bizarre error northern latitudes:
+		
 		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# 08. Calculate transmittivity (tau), unitless, and sunshine fraction
 		# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -558,14 +563,14 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 		# # kc and kd are not working for the whole world some pixels give these errors
 		# sf[sf>1]<-1.0
 		# sf[sf<0]<-0.0
-		return(as.integer(rad_in))
+		return(rad_in)
 		
 	}
 	###############################################################################################
 	# 03. set the clusters for parallel computing sf
 	###############################################################################################	
 	cl <- getCluster()
-	on.exit( returnCluster() )
+	#on.exit( returnCluster() )
 	nodes <- length(cl)
 	message('getting sf with ', nodes, ' nodes')
 	bs <- blockSize(rad_lowres, minblocks=nodes)
@@ -599,7 +604,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 				
 	}else {
 		matout <- matrix(ncol=nlayers(sf), nrow=ncell(sf))
-		endind<-cumsum(bs$nrows*out@ncols)
+		endind<-cumsum(bs$nrows*sf@ncols)
 		startind<-c(1,endind+1)    
 	}
 	###############################################################################################
@@ -665,16 +670,41 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	# sf_hres=brick('sf_hres.nc')
 	#system(paste('gdal_translate','-of RRASTER','-tr',res(elev_hres)[1],res(elev_hres)[2],'-a_srs EPSG:4326','sf_lr.grd', 'sf_hres.grd'))
 	
-	system(paste('gdalwarp','-of RRASTER',paste0('-multi -wo NUM_THREADS=',nodes),'-te',extent(elev_hres)[1],extent(elev_hres)[3],extent(elev_hres)[2],extent(elev_hres)[4],'-te_srs EPSG:4326','-tr',res(elev_hres)[1],res(elev_hres)[2],'-t_srs EPSG:4326','sf_lr.grd', 'sf_hres.grd'))
-
-	sf_hres=brick('sf_hres.grd')
 	
+	
+	if (!inmem){
+		#if(type != 'SOCKcluster'){
+		# 	system(paste('gdalwarp','-of RRASTER','-r bilinear','-te',extent(elev_hres)[1],extent(elev_hres)[3],extent(elev_hres)[2],extent(elev_hres)[4],'-te_srs EPSG:4326','-tr',res(elev_hres)[1],res(elev_hres)[2],'-t_srs EPSG:4326','sf_lr.grd', 'sf_hres.grd'))
+		# }else{
+		# 	system(paste('gdalwarp','-of RRASTER','-r bilinear',paste0('-multi -wo NUM_THREADS=',nodes),'-te',extent(elev_hres)[1],extent(elev_hres)[3],extent(elev_hres)[2],extent(elev_hres)[4],'-te_srs EPSG:4326','-tr',res(elev_hres)[1],res(elev_hres)[2],'-t_srs EPSG:4326','sf_lr.grd', 'sf_hres.grd'))
+		# } "-wo", paste0('NUM_THREADS=',nodes), "-te",paste(extent(elev_hres)[1],extent(elev_hres)[3],extent(elev_hres)[2],extent(elev_hres)[4]),  "-tr",paste(res(elev_hres)[1],res(elev_hres)[2])
+			
+		# sf::gdal_utils(util = "warp",source='sf_lr.grd',destination= 'sf_hres.grd',
+		# 	options = c(
+		# 		"-of", "RRASTER", # output file format 
+		# 		"-te",paste(extent(elev_hres)[1],extent(elev_hres)[3],extent(elev_hres)[2],extent(elev_hres)[4])
+		# 	
+		# 		# ncores,
+		# 		)
+		# )
+		
+		system(paste('gdalwarp','-of RRASTER',paste0('-multi -wo NUM_THREADS=',nodes),'-te',extent(elev_hres)[1],extent(elev_hres)[3],extent(elev_hres)[2],extent(elev_hres)[4],'-te_srs EPSG:4326','-tr',res(elev_hres)[1],res(elev_hres)[2],'-t_srs EPSG:4326','sf_lr.grd', 'sf_hres.grd'))
+		
+		
+		sf_hres=brick('sf_hres.grd')
+	}else{
+		sf_hres<-projectRaster(sf,elev_hres)
+	}
+	
+	
+	# "-te_srs", "EPSG:4326", # SRS extent
+	# "-t_srs", "EPSG:4326" # output file SRS
 	
 	###############################################################################################
 	# 10. set the clusters for rad parallel computing
 	###############################################################################################	
 		
-	bs <- blockSize(sf_hres, minblocks=nodes*10)
+	bs <- blockSize(sf_hres, minblocks=nodes*4)
 	message('computing sw with ', nodes, ' nodes')
 	parallel:::clusterExport(cl, c('y','calc_sw_in','doy','bs','sf_hres','elev_hres','lat_hr','terraines'),envir=environment()) 
 	pb <- pbCreate(bs$n)
@@ -704,7 +734,7 @@ downscaleSolar<-function(elev_hres,elev_lowres,rad_lowres,ouputdir=getwd(),inmem
 	###############################################################################################
 	
 	if(!inmem){
-		out<-writeStart(out,filename=paste0(ouputdir,"/",y[1],"_",y[length(y)],"_",'sw_in',".","nc"),format="CDF",datatype ='INT2S',overwrite=TRUE,varname="sw_in", varunit="W/m2",longname='shortwave radiation', xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(y[1]-1,"-",12)), ...)
+		out<-writeStart(out,filename=paste0(ouputdir,"/",y[1],"_",y[length(y)],"_",'sw_in',".","nc"),format="CDF",overwrite=TRUE,varname="sw_in", varunit="W/m2",longname='shortwave radiation', xname="lon", yname="lat", zname="time", zunit=paste("days","since",paste0(y[1]-1,"-",12)), ...)
 		
 		
 	}else {

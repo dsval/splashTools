@@ -8,13 +8,13 @@
 #' @keywords soil texture
 #' @export
 #' @examples
-#' getSoilSite(lat=8.7333,lon=-70.883333) 
+#' getSoilSite(lat=40.60618,lon=8.15169) 
 
 
 getSoilSite<-function(lat,lon,global_depth=NULL,set='phys'){
 	# require(httr)
-	sg_query<-paste0("https://rest.soilgrids.org/soilgrids/v2.0/properties/query?lon=",lon,"&lat=",lat,'&property=bdod&property=cfvo&property=clay&property=sand&property=soc&depth=0-5cm&depth=0-30cm&depth=5-15cm&depth=15-30cm&depth=30-60cm&depth=60-100cm&depth=100-200cm&value=mean')
-
+	sg_query<-paste0("https://rest.isric.org/soilgrids/v2.0/properties/query?lon=",lon,"&lat=",lat,'&property=bdod&property=cfvo&property=clay&property=sand&property=soc&depth=0-5cm&depth=0-30cm&depth=5-15cm&depth=15-30cm&depth=30-60cm&depth=60-100cm&depth=100-200cm&value=mean')
+	
 	sgquery<- GET(sg_query)
 	sg_all<-content(sgquery)
 	if(!is.null(global_depth)){
