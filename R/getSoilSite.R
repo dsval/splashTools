@@ -51,20 +51,28 @@ read_f_api<-function(response,factor){
 }
 #read data and convert to percentages
 sand<-read_f_api(sg_all$properties$layers[[4]],0.1)
-sand<-avg.soil.prop(sand,depth)
-clay<-read_f_api(sg_all$properties$layers[[3]],0.1)
-clay<-avg.soil.prop(clay,depth)
-# transform from g/Kg OC to % OM
-OM<-read_f_api(sg_all$properties$layers[[5]],(1.724/100))
-OM<-avg.soil.prop(OM,depth)
+if(length(sand)==0){
+	result<-rep(NA,6)
+}else{
+	sand<-avg.soil.prop(sand,depth)
+	clay<-read_f_api(sg_all$properties$layers[[3]],0.1)
+	clay<-avg.soil.prop(clay,depth)
+	# transform from g/Kg OC to % OM
+	OM<-read_f_api(sg_all$properties$layers[[5]],(1.724/100))
+	OM<-avg.soil.prop(OM,depth)
+	
+	gravel<-read_f_api(sg_all$properties$layers[[2]],0.1)
+	gravel<-avg.soil.prop(gravel,depth)
+	
+	bd<-read_f_api(sg_all$properties$layers[[1]],0.01)
+	bd<-avg.soil.prop(bd,depth)
+	
+	result<-c(sand,clay,OM,gravel,bd,depth)
+}
+	
+	
+	
 
-gravel<-read_f_api(sg_all$properties$layers[[2]],0.1)
-gravel<-avg.soil.prop(gravel,depth)
-
-bd<-read_f_api(sg_all$properties$layers[[1]],0.01)
-bd<-avg.soil.prop(bd,depth)
-
-result<-c(sand,clay,OM,gravel,bd,depth)
 names(result)<-c("sand","clay","OM","gravel","bd","depth")
 return(result)
 	
