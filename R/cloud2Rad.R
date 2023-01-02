@@ -44,7 +44,13 @@ cloud2Rad<-function(clds,elev_lowres,ouputdir=getwd(),inmem=FALSE, ...){
 	rm(lat.data)
 	
 	# 1.3  calculate slope and aspect
-	terraines<-terrain(elev_lowres, opt=c('slope', 'aspect'), unit='degrees')
+	#terraines<-terrain(elev_lowres, opt=c('slope', 'aspect'), unit='degrees')
+	setwd(dirname(rasterTmpFile()))
+	writeRaster(elev_lowres,"rawdem.tif",datatype='INT2S',format="GTiff", overwrite=TRUE)
+	system("gdaldem slope -s 111120 -compute_edges rawdem.tif slope_deg.tif")
+	system("gdaldem aspect -zero_for_flat -compute_edges rawdem.tif aspect_deg.tif")
+	terraines<-raster::stack(list(slope='slope_deg.tif',aspect='aspect_deg.tif'))
+	
 	# 1.3  fillnas slope and aspect
 	fillna<-function(ind,x){
 		focal(x[[ind]], w = matrix(1,3,3), fun = function(x, i=5) {
